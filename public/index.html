@@ -45,6 +45,24 @@
     <!-- Уведомления -->
     <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
 
+    <!-- МОДАЛЬНОЕ ОКНО ИНВЕНТАРЯ (АДМИН) -->
+    <div id="admin-inventory-modal" class="fixed inset-0 z-[60] bg-black bg-opacity-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
+            <div class="p-4 border-b flex justify-between items-center bg-gray-50">
+                <h3 class="font-bold text-lg text-gray-800 flex items-center gap-2">
+                    <i data-lucide="backpack" class="w-5 h-5 text-main"></i>
+                    Инвентарь бойца: <span id="modal-username" class="text-main">...</span>
+                </h3>
+                <button onclick="window.closeAdminModal()" class="text-gray-400 hover:text-red-600">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div id="modal-inventory-list" class="p-4 overflow-y-auto space-y-2 flex-1 bg-gray-100">
+                <!-- Сюда рендерится список вещей -->
+            </div>
+        </div>
+    </div>
+
     <!-- ЭКРАН ЗАГРУЗКИ / АВТОРИЗАЦИИ -->
     <div id="auth-screen" class="fixed inset-0 z-40 bg-white flex items-center justify-center transition-opacity duration-500">
         <div class="w-full max-w-md p-8 bg-white shadow-2xl rounded-xl border-t-4 border-main">
@@ -124,7 +142,7 @@
         import { 
             getFirestore, collection, addDoc, getDocs, doc, 
             updateDoc, deleteDoc, query, where, runTransaction, 
-            onSnapshot, setDoc, arrayUnion, increment 
+            onSnapshot, setDoc, arrayUnion, increment, getDoc 
         } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
         // ==========================================
@@ -299,32 +317,49 @@
                  Toast.show('Резерв обновлен', 'success');
             }
 
-            async removeItemFromUser(userId, itemIndex, currentInventory) {
-                const newInventory = [...currentInventory];
-                newInventory.splice(itemIndex, 1);
-                await updateDoc(doc(db, 'users', userId), { inventory: newInventory });
-                Toast.show('Предмет изъят', 'success');
-            }
-
-            // НОВЫЙ МЕТОД ДЛЯ СПИСАНИЯ
             async deductUserBalance(username, amount) {
                 try {
                     const q = query(collection(db, 'users'), where('username', '==', username));
                     const snapshot = await getDocs(q);
-                    
-                    if (snapshot.empty) throw "Боец не найден в базе данных";
-                    
+                    if (snapshot.empty) throw "Боец не найден";
                     const userDoc = snapshot.docs[0];
-                    
-                    // Используем атомарный инкремент с отрицательным числом для безопасного вычитания
-                    await updateDoc(userDoc.ref, {
-                        balance: increment(-parseFloat(amount))
-                    });
-                    
+                    await updateDoc(userDoc.ref, { balance: increment(-parseFloat(amount)) });
                     Toast.show(`Списано ${amount} A-Coin у бойца ${username}`, 'success');
                 } catch (e) {
-                    console.error(e);
                     Toast.show(e.message || e, 'error');
+                }
+            }
+
+            // === НОВЫЕ МЕТОДЫ ДЛЯ РАБОТЫ С ИНВЕНТАРЕМ ПОЛЬЗОВАТЕЛЕЙ (SOLID: SRP) ===
+            
+            async getUserInventory(userId) {
+                const snap = await getDoc(doc(db, 'users', userId));
+                if (!snap.exists()) return [];
+                return { 
+                    inventory: snap.data().inventory || [], 
+                    username: snap.data().username 
+                };
+            }
+
+            async removeItemFromUser(userId, itemIndex) {
+                try {
+                    // Получаем актуальный документ, чтобы избежать race condition
+                    const userRef = doc(db, 'users', userId);
+                    const userSnap = await getDoc(userRef);
+                    if (!userSnap.exists()) throw "Пользователь не найден";
+
+                    const currentInventory = userSnap.data().inventory || [];
+                    
+                    // Удаляем элемент по индексу
+                    currentInventory.splice(itemIndex, 1);
+
+                    await updateDoc(userRef, { inventory: currentInventory });
+                    Toast.show('Предмет удален из инвентаря', 'success');
+                    return currentInventory; // Возвращаем обновленный список для UI
+                } catch (e) {
+                    console.error(e);
+                    Toast.show('Ошибка удаления предмета', 'error');
+                    return null;
                 }
             }
         }
@@ -482,7 +517,6 @@
                     html = `
                         <h2 class="text-2xl font-bold mb-6 text-gray-800">Центр Управления (Admin)</h2>
                         
-                        <!-- Блок списания средств (НОВЫЙ) -->
                         <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-red-600 mb-8">
                             <h3 class="font-bold text-lg mb-4 flex items-center gap-2 text-red-700">
                                 <i data-lucide="siren" class="w-5 h-5"></i> Дисциплинарные взыскания (Списание)
@@ -535,7 +569,17 @@
                                     <button type="submit" class="col-span-2 bg-blue-600 text-white py-1 rounded">Создать</button>
                                 </form>
                                 <div class="space-y-2 max-h-60 overflow-y-auto">
-                                    ${allUsers.map(u => `<div class="p-2 border rounded flex justify-between"><span>${u.username}</span> <span class="text-main">${u.balance.toFixed(2)} A</span></div>`).join('')}
+                                    ${allUsers.map(u => `
+                                        <div class="p-2 border rounded flex justify-between items-center">
+                                            <div>
+                                                <span class="font-bold block text-sm">${u.username}</span>
+                                                <span class="text-main text-xs">${u.balance.toFixed(2)} A</span>
+                                            </div>
+                                            <button onclick="window.openAdminInventory('${u.id}')" class="bg-gray-100 hover:bg-gray-200 text-gray-600 p-2 rounded transition-colors" title="Открыть инвентарь">
+                                                <i data-lucide="backpack" class="w-4 h-4"></i>
+                                            </button>
+                                        </div>
+                                    `).join('')}
                                 </div>
                             </div>
                         </div>
@@ -553,6 +597,69 @@
                     break;
             }
             container.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        // ==========================================
+        // 4. ЛОГИКА МОДАЛЬНОГО ОКНА АДМИНА
+        // ==========================================
+        
+        let currentAdminTargetUser = null;
+
+        window.openAdminInventory = async (userId) => {
+            currentAdminTargetUser = userId;
+            const modal = document.getElementById('admin-inventory-modal');
+            const list = document.getElementById('modal-inventory-list');
+            const nameSpan = document.getElementById('modal-username');
+            
+            modal.classList.remove('hidden');
+            list.innerHTML = '<div class="loader mx-auto"></div>';
+            
+            const data = await admin.getUserInventory(userId);
+            nameSpan.textContent = data.username;
+            renderAdminInventoryList(data.inventory);
+        };
+
+        window.closeAdminModal = () => {
+            document.getElementById('admin-inventory-modal').classList.add('hidden');
+            currentAdminTargetUser = null;
+        };
+
+        window.deleteUserItem = async (index) => {
+            if(!currentAdminTargetUser || !confirm("Изъять этот предмет безвозвратно?")) return;
+            
+            // UI Optimistic Update (для мгновенной реакции)
+            const itemEl = document.getElementById(`inv-item-${index}`);
+            if(itemEl) itemEl.style.opacity = '0.5';
+
+            const newInventory = await admin.removeItemFromUser(currentAdminTargetUser, index);
+            
+            if (newInventory) {
+                renderAdminInventoryList(newInventory);
+            }
+        };
+
+        function renderAdminInventoryList(inventory) {
+            const list = document.getElementById('modal-inventory-list');
+            if (!inventory || inventory.length === 0) {
+                list.innerHTML = '<p class="text-center text-gray-500 mt-4">У бойца нет вещей.</p>';
+                return;
+            }
+
+            list.innerHTML = inventory.map((item, index) => `
+                <div id="inv-item-${index}" class="bg-white p-3 rounded shadow-sm border border-gray-200 flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        ${renderItemVisual(item, "", true)}
+                        <div>
+                            <p class="font-bold text-sm text-gray-800">${item.name}</p>
+                            <p class="text-xs text-gray-500">${item.type}</p>
+                        </div>
+                    </div>
+                    <button onclick="window.deleteUserItem(${index})" class="text-red-500 hover:bg-red-50 p-2 rounded transition-colors" title="Изъять">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            `).join('');
             lucide.createIcons();
         }
 
