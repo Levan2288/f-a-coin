@@ -1,7 +1,7 @@
 {
   "hosting": {
     "site": "a-coin-1488",
-    "public": "public",
+    "public": "f-a-coin/public/",
     "ignore": [
       "firebase.json",
       "**/.*",
