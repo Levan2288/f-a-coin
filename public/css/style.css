@@ -3,6 +3,11 @@
     --main-color-hover: #a68a5a;
 }
 
+body {
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
 .text-main { color: var(--main-color); }
 .bg-main { background-color: var(--main-color); }
 
@@ -18,8 +23,18 @@
     animation: spin 0.8s linear infinite;
 }
 
+/* Учет "челки" и нижней полосы iPhone */
+.safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+}
+
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
 /* Плавные переходы */
 .fade-in { animation: fadeIn 0.3s ease-in forwards; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Mobile Tap feedback */
+button:active {
+    opacity: 0.7;
+}

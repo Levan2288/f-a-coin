@@ -56,7 +56,8 @@ class AppApplication {
             }
         });
 
-        document.getElementById('logout-btn').addEventListener('click', () => this.authService.logout());
+        const logoutBtn = document.getElementById('logout-btn');
+        if(logoutBtn) logoutBtn.addEventListener('click', () => this.authService.logout());
 
         // Закрытие модального окна по клику на фон
         document.getElementById('modal-overlay').addEventListener('click', (e) => {
@@ -83,13 +84,15 @@ class AppApplication {
             { id: 'shop', icon: 'shopping-bag', label: 'Военторг' },
             { id: 'inventory', icon: 'backpack', label: 'Инвентарь' },
             { id: 'wallet', icon: 'arrow-right-left', label: 'Переводы' },
+            { id: 'profile', icon: 'user', label: 'Профиль' }
         ];
 
         if (this.authService.isAdmin()) {
-            menuItems.push({ id: 'admin', icon: 'settings', label: 'Админ Панель', admin: true });
+            menuItems.push({ id: 'admin', icon: 'settings', label: 'Админ', admin: true });
         }
 
-        const navHtml = menuItems.map(item => `
+        // Desktop Nav
+        const desktopNavHtml = menuItems.map(item => `
             <li>
                 <button onclick="App.navigate('${item.id}')" 
                     class="nav-btn w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors font-medium
@@ -98,50 +101,83 @@ class AppApplication {
                 </button>
             </li>
         `).join('');
+        document.getElementById('desktop-nav').innerHTML = desktopNavHtml;
 
-        document.getElementById('desktop-nav').innerHTML = navHtml;
+        // Mobile Nav (Bottom Bar)
+        const mobileNavHtml = menuItems.map(item => `
+            <button onclick="App.navigate('${item.id}')" 
+                class="flex flex-col items-center justify-center w-full py-1 transition-all duration-200
+                ${this.currentRoute === item.id ? 'text-[#c1a270] -translate-y-1' : 'text-gray-400 hover:text-gray-600'}">
+                <i data-lucide="${item.icon}" class="w-6 h-6 mb-1 ${this.currentRoute === item.id ? 'fill-current/20' : ''}"></i>
+                <span class="text-[10px] font-bold leading-none tracking-wide">${item.label}</span>
+            </button>
+        `).join('');
+        document.getElementById('mobile-nav').innerHTML = mobileNavHtml;
+
         lucide.createIcons();
     }
 
     updateSidebar() {
         const user = this.authService.currentUser;
-        if(user) document.getElementById('sidebar-balance').textContent = user.balance.toFixed(2);
+        if(user) {
+            const balanceText = user.balance.toFixed(0);
+            document.getElementById('sidebar-balance').textContent = balanceText;
+            
+            const mobBal = document.getElementById('mobile-balance');
+            if(mobBal) mobBal.textContent = balanceText;
+        }
     }
 
     async navigate(route) {
         this.currentRoute = route;
-        this.renderNav();
+        this.renderNav(); // Перерисовываем меню для обновления активного класса
         
         const container = document.getElementById('content-area');
         UI.showLoader('content-area');
+        
+        // Скролл вверх при навигации
+        document.getElementById('content-scroll-wrapper').scrollTop = 0;
 
         try {
             let html = '';
             
-            if (route === 'shop') {
+            if (route === 'profile') {
+                // Логика для страницы Профиля
+                const user = this.authService.currentUser;
+                html = UI.renderUserProfile(user);
+
+            } else if (route === 'shop') {
                 const items = await this.storeService.getItems();
                 html = `<h2 class="text-2xl font-bold mb-6 text-gray-800">Военторг</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 pb-20 md:pb-0">
                             ${items.map(i => UI.renderItem(i, 'App.handleBuy')).join('')}
                         </div>`;
             
             } else if (route === 'inventory') {
                 const inv = this.authService.currentUser.inventory || [];
                 html = `<h2 class="text-2xl font-bold mb-6 text-gray-800">Личный Инвентарь</h2>
-                        <div class="space-y-2">
-                            ${inv.length ? inv.map((item, idx) => UI.renderInventoryItem(item, idx)).join('') : '<p class="text-gray-500">Пусто</p>'}
+                        <div class="space-y-3 pb-20 md:pb-0">
+                            ${inv.length ? inv.map((item, idx) => UI.renderInventoryItem(item, idx)).join('') : '<div class="text-center py-10 bg-white rounded-xl shadow-sm"><p class="text-gray-400">Рюкзак пуст</p></div>'}
                         </div>`;
             
             } else if (route === 'wallet') {
                 html = `
-                    <div class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg mt-10">
+                    <div class="max-w-md mx-auto bg-white p-6 md:p-8 rounded-xl shadow-lg mt-4 md:mt-10">
                         <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800">
                             <i data-lucide="arrow-right-left" class="text-[#c1a270]"></i> Перевод средств
                         </h2>
                         <div class="space-y-5">
-                            <input type="text" id="t-user" placeholder="Позывной получателя" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-[#c1a270] outline-none">
-                            <input type="number" id="t-amount" placeholder="Сумма" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-[#c1a270] outline-none">
-                            <button onclick="App.handleTransfer()" class="w-full bg-[#c1a270] text-white py-3 rounded-lg font-bold hover:bg-[#a68a5a] shadow-lg transition-transform active:scale-95">Отправить</button>
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Кому (Позывной)</label>
+                                <input type="text" id="t-user" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#c1a270] outline-none transition" placeholder="Например: Маг">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Сумма (A)</label>
+                                <input type="number" id="t-amount" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#c1a270] outline-none transition" placeholder="0">
+                            </div>
+                            <button onclick="App.handleTransfer()" class="w-full bg-[#c1a270] text-white py-4 rounded-lg font-bold hover:bg-[#a68a5a] shadow-lg transition-transform active:scale-95 text-lg">
+                                Отправить
+                            </button>
                         </div>
                     </div>`;
             
@@ -167,12 +203,13 @@ class AppApplication {
     // --- USER ACTIONS ---
 
     async handleBuy(id, price) {
-        if(!confirm(`Подтвердить покупку за ${price} A?`)) return;
+        if(!confirm(`Купить предмет за ${price} A?`)) return;
         try {
             const items = await this.storeService.getItems();
             const item = items.find(i => i.id === id);
             await this.storeService.buyItem(this.authService.currentUser.id, item);
-            NotificationService.show(`Куплено: ${item.name}`, 'success');
+            this.updateSidebar(); 
+            NotificationService.show(`Приобретено: ${item.name}`, 'success');
         } catch (e) {
             NotificationService.show(e.message || e, 'error');
         }
@@ -181,9 +218,16 @@ class AppApplication {
     async handleTransfer() {
         const user = document.getElementById('t-user').value;
         const amount = document.getElementById('t-amount').value;
+        
+        if(!user || !amount) {
+             NotificationService.show('Заполните все поля', 'error');
+             return;
+        }
+
         try {
             await this.storeService.transfer(this.authService.currentUser.id, user, amount);
-            NotificationService.show('Перевод успешен', 'success');
+            this.updateSidebar(); 
+            NotificationService.show(`Перевод ${amount} A бойцу ${user} выполнен`, 'success');
             document.getElementById('t-user').value = '';
             document.getElementById('t-amount').value = '';
         } catch (e) {
@@ -193,7 +237,6 @@ class AppApplication {
 
     // --- ADMIN ACTIONS ---
     
-    // --- НОВЫЙ МЕТОД ПОИСКА ---
     handleUserSearch(query) {
         const term = query.toLowerCase();
         const rows = document.querySelectorAll('.user-row');
@@ -201,7 +244,7 @@ class AppApplication {
             const username = row.dataset.username || "";
             if (username.includes(term)) {
                 row.classList.remove('hidden');
-                row.classList.add('flex'); // Восстанавливаем flex
+                row.classList.add('flex');
             } else {
                 row.classList.add('hidden');
                 row.classList.remove('flex');
@@ -210,6 +253,7 @@ class AppApplication {
     }
 
     async handleDeduct() {
+        if(!confirm('Списать средства?')) return;
         try {
             await this.adminService.deductBalance(
                 document.getElementById('d-user').value,
@@ -296,7 +340,7 @@ class AppApplication {
     renderModalContent(data) {
         let invHtml = '';
         if (data.inventory.length === 0) {
-            invHtml = '<p class="text-center text-gray-500 mt-10">Инвентарь пуст</p>';
+            invHtml = '<div class="flex flex-col items-center justify-center h-40 text-gray-400"><i data-lucide="backpack" class="w-10 h-10 mb-2 opacity-50"></i><p>Инвентарь пуст</p></div>';
         } else {
             invHtml = data.inventory.map((item, idx) => UI.renderInventoryItem(item, idx, true)).join('');
         }
