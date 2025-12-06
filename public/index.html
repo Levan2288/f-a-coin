@@ -3,707 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>A-Coin Voentorg | Arma 3</title>
+    <title>A-Voentorg</title>
     
-    <!-- Подключение Tailwind CSS -->
+    <!-- CSS Frameworks -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Подключение иконок Lucide -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <style>
-        :root {
-            --main-color: #c1a270; 
-            --main-color-hover: #a68a5a;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f3f4f6;
-        }
-
-        .bg-main { background-color: var(--main-color); }
-        .bg-main:hover { background-color: var(--main-color-hover); }
-        .text-main { color: var(--main-color); }
-        .border-main { border-color: var(--main-color); }
-
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid var(--main-color);
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="h-screen overflow-hidden flex flex-col">
+<body class="h-screen overflow-hidden flex flex-col bg-gray-100 font-sans">
 
-    <!-- Уведомления -->
-    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- МОДАЛЬНОЕ ОКНО ИНВЕНТАРЯ (АДМИН) -->
-    <div id="admin-inventory-modal" class="fixed inset-0 z-[60] bg-black bg-opacity-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
-            <div class="p-4 border-b flex justify-between items-center bg-gray-50">
-                <h3 class="font-bold text-lg text-gray-800 flex items-center gap-2">
-                    <i data-lucide="backpack" class="w-5 h-5 text-main"></i>
-                    Инвентарь бойца: <span id="modal-username" class="text-main">...</span>
-                </h3>
-                <button onclick="window.closeAdminModal()" class="text-gray-400 hover:text-red-600">
-                    <i data-lucide="x" class="w-6 h-6"></i>
-                </button>
-            </div>
-            <div id="modal-inventory-list" class="p-4 overflow-y-auto space-y-2 flex-1 bg-gray-100">
-                <!-- Сюда рендерится список вещей -->
-            </div>
-        </div>
+    <!-- Modals (Admin Inventory) -->
+    <div id="modal-overlay" class="fixed inset-0 z-[60] bg-black bg-opacity-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <!-- Content injected by JS -->
     </div>
 
-    <!-- ЭКРАН ЗАГРУЗКИ / АВТОРИЗАЦИИ -->
-    <div id="auth-screen" class="fixed inset-0 z-40 bg-white flex items-center justify-center transition-opacity duration-500">
-        <div class="w-full max-w-md p-8 bg-white shadow-2xl rounded-xl border-t-4 border-main">
-            <h1 class="text-3xl font-bold text-gray-800 text-center mb-2">A-COIN <span class="text-main">VOENTORG</span></h1>
-            <p class="text-center text-gray-500 mb-8">Система снабжения и торговли</p>
+    <!-- Auth Screen -->
+    <div id="auth-screen" class="fixed inset-0 z-40 bg-white flex items-center justify-center transition-all duration-500">
+        <div class="w-full max-w-md p-8 bg-white shadow-2xl rounded-xl border-t-4 border-[#c1a270]">
+            <h1 class="text-3xl font-bold text-gray-800 text-center mb-2">A-COIN <span class="text-[#c1a270]">SYSTEM</span></h1>
+            <p class="text-center text-gray-500 mb-8">Secure Access Terminal</p>
             
             <form id="login-form" class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Позывной (Логин)</label>
-                    <input type="text" id="login-username" class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500" required>
+                    <label class="block text-sm font-medium text-gray-700">Позывной</label>
+                    <input type="text" id="login-username" class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#c1a270] outline-none transition" required>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Пароль доступа</label>
-                    <input type="password" id="login-password" class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500" required>
+                    <label class="block text-sm font-medium text-gray-700">Пароль</label>
+                    <input type="password" id="login-password" class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#c1a270] outline-none transition" required>
                 </div>
-                <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-main focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors">
-                    Войти в систему
+                <button type="submit" class="w-full py-3 px-4 bg-[#c1a270] hover:bg-[#a68a5a] text-white rounded-md font-medium transition-all shadow-lg hover:shadow-xl">
+                    Авторизация
                 </button>
             </form>
-            <p id="auth-error" class="mt-4 text-center text-red-600 text-sm hidden"></p>
+            <p id="auth-error" class="mt-4 text-center text-red-600 text-sm hidden animate-pulse"></p>
         </div>
     </div>
 
-    <!-- ОСНОВНОЙ ИНТЕРФЕЙС -->
-    <div id="app-interface" class="flex h-full hidden">
+    <!-- Main App Interface -->
+    <div id="app-interface" class="flex h-full hidden opacity-0 transition-opacity duration-500">
         
-        <!-- Боковое меню (Sidebar) -->
-        <aside class="w-64 bg-white shadow-lg z-30 hidden md:flex flex-col h-full">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white shadow-xl z-30 hidden md:flex flex-col h-full">
             <div class="p-6 border-b border-gray-100 flex items-center gap-2">
-                <i data-lucide="shield" class="text-main w-8 h-8"></i>
+                <i data-lucide="shield" class="text-[#c1a270] w-8 h-8"></i>
                 <span class="text-xl font-bold tracking-wider">ARMORY</span>
             </div>
             
             <nav class="flex-1 overflow-y-auto py-4">
-                <ul class="space-y-1 px-3">
-                    <li><button onclick="router.navigate('shop')" class="nav-btn w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 text-gray-600 hover:bg-gray-50 hover:text-main transition-colors font-medium"><i data-lucide="shopping-bag" class="w-5 h-5"></i> Военторг</button></li>
-                    <li><button onclick="router.navigate('inventory')" class="nav-btn w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 text-gray-600 hover:bg-gray-50 hover:text-main transition-colors font-medium"><i data-lucide="backpack" class="w-5 h-5"></i> Мой инвентарь</button></li>
-                    <li><button onclick="router.navigate('wallet')" class="nav-btn w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 text-gray-600 hover:bg-gray-50 hover:text-main transition-colors font-medium"><i data-lucide="arrow-right-left" class="w-5 h-5"></i> Переводы (P2P)</button></li>
-                    <li id="admin-link" class="hidden"><button onclick="router.navigate('admin')" class="nav-btn w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors font-medium"><i data-lucide="settings" class="w-5 h-5"></i> Админ Панель</button></li>
+                <ul class="space-y-1 px-3" id="desktop-nav">
+                    <!-- Nav generated by JS -->
                 </ul>
             </nav>
 
-            <div class="p-4 border-t border-gray-100">
-                <div class="bg-gray-50 rounded-lg p-3 mb-3">
-                    <p class="text-xs text-gray-500 uppercase">Ваш баланс</p>
+            <div class="p-4 border-t border-gray-100 bg-gray-50">
+                <div class="mb-3">
+                    <p class="text-xs text-gray-500 uppercase font-bold">Баланс</p>
                     <div class="flex items-baseline gap-1">
                         <span id="sidebar-balance" class="text-xl font-bold text-gray-800">0.00</span>
-                        <span class="text-xs font-bold text-main">A-COIN</span>
+                        <span class="text-xs font-bold text-[#c1a270]">AC</span>
                     </div>
-                    <p class="text-xs text-gray-400 mt-1">Курс: <span id="sidebar-rate">...</span> $</p>
                 </div>
-                <button onclick="auth.logout()" class="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-red-600 border border-red-100 rounded-lg hover:bg-red-50 transition-colors">
+                <button id="logout-btn" class="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
                     <i data-lucide="log-out" class="w-4 h-4"></i> Выход
                 </button>
             </div>
         </aside>
 
-        <!-- Мобильное меню -->
-        <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50 flex justify-around p-3 border-t">
-            <button onclick="router.navigate('shop')" class="flex flex-col items-center text-gray-500 hover:text-main"><i data-lucide="shopping-bag" class="w-6 h-6"></i><span class="text-[10px]">Магазин</span></button>
-            <button onclick="router.navigate('inventory')" class="flex flex-col items-center text-gray-500 hover:text-main"><i data-lucide="backpack" class="w-6 h-6"></i><span class="text-[10px]">Вещи</span></button>
-            <button onclick="router.navigate('wallet')" class="flex flex-col items-center text-gray-500 hover:text-main"><i data-lucide="arrow-right-left" class="w-6 h-6"></i><span class="text-[10px]">Обмен</span></button>
-            <button onclick="router.navigate('profile')" class="flex flex-col items-center text-gray-500 hover:text-main"><i data-lucide="user" class="w-6 h-6"></i><span class="text-[10px]">Профиль</span></button>
+        <!-- Mobile Nav -->
+        <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white shadow-[0_-4px_15px_rgba(0,0,0,0.1)] z-50 flex justify-around p-3 border-t" id="mobile-nav">
+            <!-- Mobile nav generated by JS -->
         </div>
 
-        <!-- Контент -->
-        <main class="flex-1 h-full overflow-y-auto bg-gray-100 relative">
-            <div id="content-area" class="p-4 md:p-8 pb-24 md:pb-8 max-w-7xl mx-auto">
-                <!-- Сюда динамически рендерится контент -->
+        <!-- Main Content -->
+        <main class="flex-1 h-full overflow-y-auto bg-[#f3f4f6] relative">
+            <div id="content-area" class="p-4 md:p-8 pb-24 md:pb-8 max-w-7xl mx-auto min-h-full">
+                <!-- Content injected by JS -->
             </div>
         </main>
     </div>
 
-    <!-- МОДУЛИ СКРИПТА -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { 
-            getFirestore, collection, addDoc, getDocs, doc, 
-            updateDoc, deleteDoc, query, where, runTransaction, 
-            onSnapshot, setDoc, arrayUnion, increment, getDoc 
-        } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-
-        // ==========================================
-        // 1. КОНФИГУРАЦИЯ
-        // ==========================================
-        const firebaseConfig = {
-            apiKey: "", 
-            authDomain: "your-project.firebaseapp.com",
-            projectId: "a-coin-fb077",
-            storageBucket: "your-project.appspot.com",
-            messagingSenderId: "123456789", 
-            appId: "1:123456789:web:abcdef"
-        };
-        
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // ==========================================
-        // 2. СЕРВИСЫ
-        // ==========================================
-
-        const Toast = {
-            show(message, type = 'info') {
-                const container = document.getElementById('toast-container');
-                const el = document.createElement('div');
-                const colors = type === 'error' ? 'bg-red-500' : type === 'success' ? 'bg-green-500' : 'bg-blue-500';
-                el.className = `${colors} text-white px-6 py-3 rounded shadow-lg transform transition-all duration-300 translate-x-full opacity-0 flex items-center gap-2`;
-                el.innerHTML = `<span>${message}</span>`;
-                container.appendChild(el);
-                requestAnimationFrame(() => el.classList.remove('translate-x-full', 'opacity-0'));
-                setTimeout(() => {
-                    el.classList.add('opacity-0', 'translate-y-[-10px]');
-                    setTimeout(() => el.remove(), 300);
-                }, 3000);
-            }
-        };
-
-        class AuthService {
-            constructor() { this.currentUser = null; this.isAdmin = false; }
-            async login(username, password) {
-                try {
-                    const q = query(collection(db, 'users'), where('username', '==', username));
-                    const snapshot = await getDocs(q);
-                    if (snapshot.empty) {
-                        const allUsers = await getDocs(collection(db, 'users'));
-                        if (allUsers.empty && username === 'admin' && password === 'admin') {
-                            await this.createFirstAdmin();
-                            return this.login('admin', 'admin');
-                        }
-                        throw new Error('Пользователь не найден');
-                    }
-                    const userData = snapshot.docs[0].data();
-                    if (userData.password !== password) throw new Error('Неверный пароль');
-                    this.currentUser = { id: snapshot.docs[0].id, ...userData };
-                    this.isAdmin = userData.role === 'admin';
-                    localStorage.setItem('voentorg_user', JSON.stringify(this.currentUser));
-                    return true;
-                } catch (e) { console.error(e); throw e; }
-            }
-            async createFirstAdmin() {
-                await addDoc(collection(db, 'users'), { username: 'admin', password: 'admin', balance: 100000, role: 'admin', inventory: [] });
-            }
-            logout() {
-                this.currentUser = null;
-                localStorage.removeItem('voentorg_user');
-                window.location.reload();
-            }
-            loadSession() {
-                const stored = localStorage.getItem('voentorg_user');
-                if (stored) {
-                    this.currentUser = JSON.parse(stored);
-                    this.isAdmin = this.currentUser.role === 'admin';
-                    return true;
-                }
-                return false;
-            }
-        }
-
-        class StoreService {
-            async getItems() {
-                const snapshot = await getDocs(collection(db, 'items'));
-                return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-            }
-
-            async buyItem(userId, item) {
-                try {
-                    await runTransaction(db, async (transaction) => {
-                        const userRef = doc(db, 'users', userId);
-                        const userDoc = await transaction.get(userRef);
-                        if (!userDoc.exists()) throw "User does not exist!";
-                        const newBalance = userDoc.data().balance - item.price;
-                        if (newBalance < 0) throw "Недостаточно средств";
-
-                        transaction.update(userRef, { balance: newBalance });
-                        transaction.update(userRef, {
-                            inventory: arrayUnion({
-                                itemId: item.id,
-                                name: item.name,
-                                type: item.type,
-                                description: item.description,
-                                imageUrl: item.imageUrl || null, 
-                                purchaseDate: new Date().toISOString()
-                            })
-                        });
-                    });
-                    Toast.show(`Куплено: ${item.name}`, 'success');
-                    return true;
-                } catch (e) {
-                    Toast.show(e, 'error');
-                    return false;
-                }
-            }
-
-            async transferCoins(senderId, receiverUsername, amount) {
-                amount = parseFloat(amount);
-                if (isNaN(amount) || amount <= 0) { Toast.show('Некорректная сумма', 'error'); return; }
-                try {
-                    await runTransaction(db, async (transaction) => {
-                        const q = query(collection(db, 'users'), where('username', '==', receiverUsername));
-                        const receiverSnap = await getDocs(q);
-                        if (receiverSnap.empty) throw "Получатель не найден";
-                        const receiverRef = receiverSnap.docs[0].ref;
-                        const senderRef = doc(db, 'users', senderId);
-                        const senderDoc = await transaction.get(senderRef);
-                        if (senderDoc.data().balance < amount) throw "Недостаточно средств";
-                        transaction.update(senderRef, { balance: increment(-amount) });
-                        transaction.update(receiverRef, { balance: increment(amount) });
-                    });
-                    Toast.show('Перевод выполнен успешно', 'success');
-                } catch (e) { Toast.show(`Ошибка перевода: ${e}`, 'error'); }
-            }
-
-            async getExchangeRate() {
-                try {
-                    const configSnap = await getDocs(collection(db, 'config'));
-                    let reserve = 10000;
-                    if(!configSnap.empty) configSnap.forEach(d => { if(d.id === 'economy') reserve = d.data().liquidity_reserve_usd; });
-                    const usersSnap = await getDocs(collection(db, 'users'));
-                    let totalSupply = 0;
-                    usersSnap.forEach(d => totalSupply += (d.data().balance || 0));
-                    if (totalSupply === 0) return 1.00;
-                    return (reserve / totalSupply).toFixed(2);
-                } catch (e) { return "0.00"; }
-            }
-        }
-
-        class AdminService {
-            async addUser(username, password, balance, role = 'user') {
-                try {
-                    const q = query(collection(db, 'users'), where('username', '==', username));
-                    if (!(await getDocs(q)).empty) throw "Пользователь существует";
-                    await addDoc(collection(db, 'users'), { username, password, balance: parseFloat(balance), role, inventory: [] });
-                    Toast.show('Пользователь создан', 'success');
-                } catch (e) { Toast.show(e, 'error'); }
-            }
-
-            async addItem(itemData) {
-                try {
-                    await addDoc(collection(db, 'items'), itemData);
-                    Toast.show('Товар добавлен', 'success');
-                } catch(e) { Toast.show(e, 'error'); }
-            }
-
-            async deleteItem(itemId) {
-                if(!confirm('Удалить товар?')) return;
-                await deleteDoc(doc(db, 'items', itemId));
-                Toast.show('Товар удален', 'success');
-            }
-            
-            async updateLiquidity(amount) {
-                 await setDoc(doc(db, 'config', 'economy'), { liquidity_reserve_usd: parseFloat(amount) }, { merge: true });
-                 Toast.show('Резерв обновлен', 'success');
-            }
-
-            async deductUserBalance(username, amount) {
-                try {
-                    const q = query(collection(db, 'users'), where('username', '==', username));
-                    const snapshot = await getDocs(q);
-                    if (snapshot.empty) throw "Боец не найден";
-                    const userDoc = snapshot.docs[0];
-                    await updateDoc(userDoc.ref, { balance: increment(-parseFloat(amount)) });
-                    Toast.show(`Списано ${amount} A-Coin у бойца ${username}`, 'success');
-                } catch (e) {
-                    Toast.show(e.message || e, 'error');
-                }
-            }
-
-            // === НОВЫЕ МЕТОДЫ ДЛЯ РАБОТЫ С ИНВЕНТАРЕМ ПОЛЬЗОВАТЕЛЕЙ (SOLID: SRP) ===
-            
-            async getUserInventory(userId) {
-                const snap = await getDoc(doc(db, 'users', userId));
-                if (!snap.exists()) return [];
-                return { 
-                    inventory: snap.data().inventory || [], 
-                    username: snap.data().username 
-                };
-            }
-
-            async removeItemFromUser(userId, itemIndex) {
-                try {
-                    // Получаем актуальный документ, чтобы избежать race condition
-                    const userRef = doc(db, 'users', userId);
-                    const userSnap = await getDoc(userRef);
-                    if (!userSnap.exists()) throw "Пользователь не найден";
-
-                    const currentInventory = userSnap.data().inventory || [];
-                    
-                    // Удаляем элемент по индексу
-                    currentInventory.splice(itemIndex, 1);
-
-                    await updateDoc(userRef, { inventory: currentInventory });
-                    Toast.show('Предмет удален из инвентаря', 'success');
-                    return currentInventory; // Возвращаем обновленный список для UI
-                } catch (e) {
-                    console.error(e);
-                    Toast.show('Ошибка удаления предмета', 'error');
-                    return null;
-                }
-            }
-        }
-
-        // ==========================================
-        // 3. UI RENDERER И ХЕЛПЕРЫ
-        // ==========================================
-        
-        const auth = new AuthService();
-        const store = new StoreService();
-        const admin = new AdminService();
-
-        function renderItemVisual(item, sizeClass = "h-40 w-full", isThumb = false) {
-            if (item.imageUrl && item.imageUrl.trim() !== "") {
-                const imgClass = isThumb ? "w-12 h-12 rounded object-cover" : `${sizeClass} object-cover rounded-t-lg`;
-                return `
-                    <img src="${item.imageUrl}" alt="${item.name}" class="${imgClass}" 
-                         onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.classList.add('flex');">
-                    <div class="hidden ${isThumb ? "w-12 h-12" : sizeClass} bg-gray-100 flex items-center justify-center rounded">
-                        ${getIconForType(item.type)}
-                    </div>
-                `;
-            }
-            return `
-                <div class="${isThumb ? "w-12 h-12" : sizeClass} bg-gray-100 flex items-center justify-center rounded-lg">
-                    ${getIconForType(item.type)}
-                </div>
-            `;
-        }
-
-        function getIconForType(type) {
-            switch(type) {
-                case 'weapon': return '<i data-lucide="crosshair" class="w-6 h-6 text-gray-500"></i>';
-                case 'uniform': return '<i data-lucide="shirt" class="w-6 h-6 text-gray-500"></i>';
-                case 'acc': return '<i data-lucide="glasses" class="w-6 h-6 text-gray-500"></i>';
-                default: return '<i data-lucide="box" class="w-6 h-6 text-gray-500"></i>';
-            }
-        }
-
-        const router = {
-            current: 'shop',
-            navigate(page) {
-                this.current = page;
-                renderApp();
-                document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('text-main', 'bg-gray-50'));
-            }
-        };
-
-        window.router = router;
-        window.auth = auth;
-
-        function setupListeners() {
-            document.getElementById('login-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                try {
-                    await auth.login(document.getElementById('login-username').value, document.getElementById('login-password').value);
-                    initApp();
-                } catch (err) {
-                    const errEl = document.getElementById('auth-error');
-                    errEl.textContent = err.message;
-                    errEl.classList.remove('hidden');
-                }
-            });
-        }
-
-        async function initApp() {
-            document.getElementById('auth-screen').classList.add('hidden');
-            document.getElementById('app-interface').classList.remove('hidden');
-            document.getElementById('app-interface').classList.add('flex');
-            if (auth.isAdmin) document.getElementById('admin-link').classList.remove('hidden');
-
-            onSnapshot(doc(db, 'users', auth.currentUser.id), (doc) => {
-                auth.currentUser = { id: doc.id, ...doc.data() };
-                document.getElementById('sidebar-balance').textContent = auth.currentUser.balance.toFixed(2);
-            });
-            const rate = await store.getExchangeRate();
-            document.getElementById('sidebar-rate').textContent = rate;
-            renderApp();
-        }
-
-        async function renderApp() {
-            const container = document.getElementById('content-area');
-            container.innerHTML = '<div class="flex justify-center mt-10"><div class="loader"></div></div>';
-            let html = '';
-
-            switch(router.current) {
-                case 'shop':
-                    const items = await store.getItems();
-                    html = `
-                        <h2 class="text-2xl font-bold mb-6 text-gray-800">Военторг</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            ${items.map(item => `
-                                <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow flex flex-col overflow-hidden">
-                                    ${renderItemVisual(item)}
-                                    <div class="p-5 flex flex-col flex-1">
-                                        <div class="flex justify-between items-start mb-2">
-                                            <h3 class="font-bold text-lg text-gray-800">${item.name}</h3>
-                                            <span class="font-bold text-main bg-red-50 px-2 py-1 rounded text-sm whitespace-nowrap">${item.price} A</span>
-                                        </div>
-                                        <p class="text-gray-500 text-sm mb-4 flex-1">${item.description}</p>
-                                        <button onclick="window.buy('${item.id}', '${item.price}')" class="w-full bg-gray-900 text-white py-2 rounded-lg hover:bg-main transition-colors font-medium">Купить</button>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    `;
-                    break;
-
-                case 'inventory':
-                    const inventory = auth.currentUser.inventory || [];
-                    html = `
-                        <h2 class="text-2xl font-bold mb-6 text-gray-800">Личный состав / Инвентарь</h2>
-                        ${inventory.length === 0 ? '<p class="text-gray-500">Инвентарь пуст. Посетите военторг.</p>' : ''}
-                        <div class="space-y-3">
-                            ${inventory.map(item => `
-                                <div class="bg-white p-3 rounded-lg shadow-sm border-l-4 border-main flex items-center justify-between">
-                                    <div class="flex items-center gap-4">
-                                        ${renderItemVisual(item, "", true)}
-                                        <div>
-                                            <h4 class="font-bold text-gray-800">${item.name}</h4>
-                                            <p class="text-xs text-gray-400">${item.type} • Получено: ${new Date(item.purchaseDate).toLocaleDateString()}</p>
-                                        </div>
-                                    </div>
-                                    <span class="text-xs bg-gray-100 px-2 py-1 rounded">В наличии</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    `;
-                    break;
-
-                case 'wallet':
-                    html = `
-                        <div class="max-w-md mx-auto bg-white p-6 rounded-xl shadow-sm">
-                            <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i data-lucide="arrow-right-left" class="w-5 h-5 text-main"></i> Перевод средств</h2>
-                            <div class="bg-gray-50 p-4 rounded-lg mb-6">
-                                <p class="text-sm text-gray-500">Доступно</p>
-                                <p class="text-2xl font-bold">${auth.currentUser.balance.toFixed(2)} A-COIN</p>
-                            </div>
-                            <div class="space-y-4">
-                                <input type="text" id="transfer-username" placeholder="Позывной получателя" class="w-full p-2 border rounded focus:ring-main focus:border-main">
-                                <input type="number" id="transfer-amount" placeholder="Сумма" class="w-full p-2 border rounded focus:ring-main focus:border-main">
-                                <button onclick="window.makeTransfer()" class="w-full bg-main text-white py-3 rounded-lg font-bold hover:bg-red-700 transition-colors">Отправить</button>
-                            </div>
-                        </div>
-                    `;
-                    break;
-
-                case 'admin':
-                    if (!auth.isAdmin) { router.navigate('shop'); return; }
-                    const usersSnap = await getDocs(collection(db, 'users'));
-                    const allUsers = usersSnap.docs.map(d => ({id: d.id, ...d.data()}));
-                    const itemsSnap = await getDocs(collection(db, 'items'));
-                    const allItems = itemsSnap.docs.map(d => ({id: d.id, ...d.data()}));
-
-                    html = `
-                        <h2 class="text-2xl font-bold mb-6 text-gray-800">Центр Управления (Admin)</h2>
-                        
-                        <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-red-600 mb-8">
-                            <h3 class="font-bold text-lg mb-4 flex items-center gap-2 text-red-700">
-                                <i data-lucide="siren" class="w-5 h-5"></i> Дисциплинарные взыскания (Списание)
-                            </h3>
-                            <form onsubmit="window.deductCoins(event)" class="flex flex-col md:flex-row gap-4 items-end bg-red-50 p-4 rounded-lg">
-                                <div class="flex-1 w-full">
-                                    <label class="block text-xs font-bold text-red-700 uppercase mb-1">Позывной бойца</label>
-                                    <input type="text" name="username" placeholder="Введите логин" class="w-full p-2 border border-red-200 rounded focus:ring-red-500 focus:border-red-500" required>
-                                </div>
-                                <div class="w-full md:w-48">
-                                    <label class="block text-xs font-bold text-red-700 uppercase mb-1">Сумма штрафа</label>
-                                    <input type="number" name="amount" placeholder="0.00" min="0.01" step="0.01" class="w-full p-2 border border-red-200 rounded focus:ring-red-500 focus:border-red-500" required>
-                                </div>
-                                <button type="submit" class="w-full md:w-auto bg-red-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-red-700 transition-colors flex items-center justify-center gap-2">
-                                    <i data-lucide="gavel" class="w-4 h-4"></i> Списать
-                                </button>
-                            </form>
-                        </div>
-
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            <div class="bg-white p-6 rounded-xl shadow-sm">
-                                <h3 class="font-bold text-lg mb-4 border-b pb-2">Добавить товар</h3>
-                                <form onsubmit="window.createItem(event)" class="grid grid-cols-2 gap-3 mb-6 bg-gray-50 p-3 rounded">
-                                    <input type="text" name="name" placeholder="Название" class="p-2 border rounded" required>
-                                    <input type="text" name="type" placeholder="Тип (weapon/uniform/acc)" class="p-2 border rounded" required>
-                                    <input type="number" name="price" placeholder="Цена" class="p-2 border rounded" required>
-                                    <input type="url" name="imageUrl" placeholder="Ссылка на фото (Pinterest/Imgur)" class="p-2 border rounded col-span-2">
-                                    <input type="text" name="desc" placeholder="Описание" class="p-2 border rounded col-span-2" required>
-                                    <button type="submit" class="col-span-2 bg-green-600 text-white py-2 rounded">Создать</button>
-                                </form>
-                                <div class="space-y-2 max-h-60 overflow-y-auto">
-                                    ${allItems.map(i => `
-                                        <div class="flex justify-between items-center p-2 border rounded hover:bg-gray-50">
-                                            <div class="flex items-center gap-2">
-                                                ${renderItemVisual(i, "", true)}
-                                                <div><span class="font-bold block">${i.name}</span> <span class="text-xs text-gray-500">${i.price} A</span></div>
-                                            </div>
-                                            <button onclick="window.delItem('${i.id}')" class="text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                            
-                            <div class="bg-white p-6 rounded-xl shadow-sm">
-                                <h3 class="font-bold text-lg mb-4 border-b pb-2">Личный состав</h3>
-                                <form onsubmit="window.createUser(event)" class="grid grid-cols-2 gap-3 mb-6 bg-gray-50 p-3 rounded">
-                                    <input type="text" name="username" placeholder="Логин" class="p-2 border rounded" required>
-                                    <input type="text" name="password" placeholder="Пароль" class="p-2 border rounded" required>
-                                    <input type="number" name="balance" placeholder="Баланс" class="p-2 border rounded" required>
-                                    <button type="submit" class="col-span-2 bg-blue-600 text-white py-1 rounded">Создать</button>
-                                </form>
-                                <div class="space-y-2 max-h-60 overflow-y-auto">
-                                    ${allUsers.map(u => `
-                                        <div class="p-2 border rounded flex justify-between items-center">
-                                            <div>
-                                                <span class="font-bold block text-sm">${u.username}</span>
-                                                <span class="text-main text-xs">${u.balance.toFixed(2)} A</span>
-                                            </div>
-                                            <button onclick="window.openAdminInventory('${u.id}')" class="bg-gray-100 hover:bg-gray-200 text-gray-600 p-2 rounded transition-colors" title="Открыть инвентарь">
-                                                <i data-lucide="backpack" class="w-4 h-4"></i>
-                                            </button>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    break;
-                case 'profile':
-                    html = `
-                        <div class="bg-white p-6 rounded-xl shadow-sm text-center">
-                            <div class="w-20 h-20 bg-gray-200 rounded-full mx-auto flex items-center justify-center mb-4"><i data-lucide="user" class="w-10 h-10 text-gray-500"></i></div>
-                            <h2 class="text-xl font-bold">${auth.currentUser.username}</h2>
-                            <p class="text-main text-2xl font-bold mt-2">${auth.currentUser.balance.toFixed(2)} A</p>
-                            <button onclick="auth.logout()" class="mt-6 text-red-600 border border-red-200 px-6 py-2 rounded-full w-full">Выйти</button>
-                        </div>
-                    `;
-                    break;
-            }
-            container.innerHTML = html;
-            lucide.createIcons();
-        }
-
-        // ==========================================
-        // 4. ЛОГИКА МОДАЛЬНОГО ОКНА АДМИНА
-        // ==========================================
-        
-        let currentAdminTargetUser = null;
-
-        window.openAdminInventory = async (userId) => {
-            currentAdminTargetUser = userId;
-            const modal = document.getElementById('admin-inventory-modal');
-            const list = document.getElementById('modal-inventory-list');
-            const nameSpan = document.getElementById('modal-username');
-            
-            modal.classList.remove('hidden');
-            list.innerHTML = '<div class="loader mx-auto"></div>';
-            
-            const data = await admin.getUserInventory(userId);
-            nameSpan.textContent = data.username;
-            renderAdminInventoryList(data.inventory);
-        };
-
-        window.closeAdminModal = () => {
-            document.getElementById('admin-inventory-modal').classList.add('hidden');
-            currentAdminTargetUser = null;
-        };
-
-        window.deleteUserItem = async (index) => {
-            if(!currentAdminTargetUser || !confirm("Изъять этот предмет безвозвратно?")) return;
-            
-            // UI Optimistic Update (для мгновенной реакции)
-            const itemEl = document.getElementById(`inv-item-${index}`);
-            if(itemEl) itemEl.style.opacity = '0.5';
-
-            const newInventory = await admin.removeItemFromUser(currentAdminTargetUser, index);
-            
-            if (newInventory) {
-                renderAdminInventoryList(newInventory);
-            }
-        };
-
-        function renderAdminInventoryList(inventory) {
-            const list = document.getElementById('modal-inventory-list');
-            if (!inventory || inventory.length === 0) {
-                list.innerHTML = '<p class="text-center text-gray-500 mt-4">У бойца нет вещей.</p>';
-                return;
-            }
-
-            list.innerHTML = inventory.map((item, index) => `
-                <div id="inv-item-${index}" class="bg-white p-3 rounded shadow-sm border border-gray-200 flex justify-between items-center">
-                    <div class="flex items-center gap-3">
-                        ${renderItemVisual(item, "", true)}
-                        <div>
-                            <p class="font-bold text-sm text-gray-800">${item.name}</p>
-                            <p class="text-xs text-gray-500">${item.type}</p>
-                        </div>
-                    </div>
-                    <button onclick="window.deleteUserItem(${index})" class="text-red-500 hover:bg-red-50 p-2 rounded transition-colors" title="Изъять">
-                        <i data-lucide="trash-2" class="w-4 h-4"></i>
-                    </button>
-                </div>
-            `).join('');
-            lucide.createIcons();
-        }
-
-        // Global Bindings
-        window.buy = async (id, price) => {
-            const items = await store.getItems();
-            if(confirm(`Купить за ${price}?`)) await store.buyItem(auth.currentUser.id, items.find(i => i.id === id));
-        };
-        window.makeTransfer = async () => {
-            await store.transferCoins(auth.currentUser.id, document.getElementById('transfer-username').value, document.getElementById('transfer-amount').value);
-        };
-        window.createItem = async (e) => {
-            e.preventDefault();
-            const form = e.target;
-            await admin.addItem({
-                name: form.name.value,
-                type: form.type.value,
-                price: parseFloat(form.price.value),
-                description: form.desc.value,
-                imageUrl: form.imageUrl.value 
-            });
-            form.reset();
-            renderApp();
-        };
-        window.delItem = async (id) => await admin.deleteItem(id);
-        window.createUser = async (e) => {
-            e.preventDefault();
-            const f = e.target;
-            await admin.addUser(f.username.value, f.password.value, f.balance.value);
-            f.reset();
-            renderApp();
-        };
-
-        // GLOBAL BINDING для списания
-        window.deductCoins = async (e) => {
-            e.preventDefault();
-            const f = e.target;
-            await admin.deductUserBalance(f.username.value, f.amount.value);
-            f.reset();
-            renderApp(); // Обновляем UI, чтобы увидеть новый баланс в списке
-        };
-
-        setupListeners();
-        if (auth.loadSession()) initApp();
-    </script>
+    <!-- Init Script -->
+    <script type="module" src="./js/app.js"></script>
 </body>
 </html>
