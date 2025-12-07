@@ -232,13 +232,13 @@ class AppApplication {
         try {
             const items = await this.storeService.getItems();
             const item = items.find(i => i.id === id);
-            await this.storeService.buyItem(this.authService.currentUser.id, item);
+            await this.storeService.buyItem(this.authService.currentUser.id, id); 
             this.updateSidebar(); 
             NotificationService.show(`Приобретено: ${item.name}`, 'success');
         } catch (e) {
             NotificationService.show(e.message || e, 'error');
         }
-    }
+}
 
     async handleTransfer() {
         const user = document.getElementById('t-user').value;
