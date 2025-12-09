@@ -290,6 +290,7 @@ export const UI = {
                                     <input name="customName" placeholder="Название предмета" class="w-full p-2 border rounded text-sm">
                                     <input name="customType" placeholder="Тип (weapon/uniform/acc)" class="w-full p-2 border rounded text-sm">
                                     <input name="customDesc" placeholder="Описание (награда и т.д.)" class="w-full p-2 border rounded text-sm">
+                                    <input name="customImage" placeholder="URL картинки (необязательно)" class="w-full p-2 border rounded text-sm">
                                 </div>
                                 <button type="submit" class="w-full bg-green-600 text-white py-2 rounded font-bold text-xs uppercase hover:bg-green-700 mt-2">Выдать бойцу</button>
                             </form>

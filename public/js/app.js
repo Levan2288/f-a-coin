@@ -57,7 +57,7 @@ class AppApplication {
             // Админ
             if (action === 'deduct') this.handleDeduct();
             if (action === 'delete-item') this.handleDeleteItem(data.id);
-            if (action === 'manage-user') this.handleManageUser(data.id); // Новое название
+            if (action === 'manage-user') this.handleManageUser(data.id); 
             if (action === 'delete-user-item') this.handleDeleteUserItem(data.index);
             if (action === 'import-squad') this.handleImportSquad();
             
@@ -66,8 +66,10 @@ class AppApplication {
             if (action === 'toggle-grant-form') {
                 document.getElementById('grant-item-form').classList.toggle('hidden');
             }
+            // ИСПРАВЛЕНО: Закрытие по клику на фон
             if (action === 'modal-overlay') { 
-                if(e.target === e.currentTarget) this.closeModal();
+                // Закрываем только если кликнули именно по затемненному фону, а не по контенту
+                if(e.target === target) this.closeModal();
             }
         });
 
@@ -84,7 +86,6 @@ class AppApplication {
             if (action === 'create-item') await this.handleCreateItem(form);
             if (action === 'create-user') await this.handleCreateUser(form);
             
-            // НОВЫЕ ХЕНДЛЕРЫ
             if (action === 'save-user-profile') await this.handleSaveUserProfile(form);
             if (action === 'grant-item') await this.handleGrantItem(form);
         });
@@ -412,6 +413,7 @@ class AppApplication {
                 name: customName,
                 type: form.customType.value || 'acc',
                 description: form.customDesc.value || '',
+                imageUrl: form.customImage.value || null, // Добавлено чтение картинки
                 price: 0 // Подарок
             };
         } else {
