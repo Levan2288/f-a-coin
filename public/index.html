@@ -68,7 +68,8 @@
                         <span class="text-xs font-bold text-[#c1a270]">AC</span>
                     </div>
                 </div>
-                <button id="logout-btn" class="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
+                <!-- ИСПРАВЛЕНО: добавлен data-action="logout" -->
+                <button data-action="logout" class="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
                     <i data-lucide="log-out" class="w-4 h-4"></i> Выход
                 </button>
             </div>
@@ -87,7 +88,8 @@
                         <span id="mobile-balance" class="font-bold text-gray-800 block leading-none text-lg">0</span>
                         <span class="text-[10px] text-[#c1a270] font-bold uppercase">AC Balance</span>
                     </div>
-                    <button onclick="App.authService.logout()" class="text-gray-400 hover:text-red-600 p-1">
+                    <!-- ИСПРАВЛЕНО: убран onclick, добавлен data-action="logout" -->
+                    <button data-action="logout" class="text-gray-400 hover:text-red-600 p-1">
                         <i data-lucide="log-out" class="w-5 h-5"></i>
                     </button>
                 </div>

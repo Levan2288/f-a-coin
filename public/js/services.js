@@ -103,23 +103,20 @@ export class StoreService {
         return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
     }
 
-    // ИСПРАВЛЕНИЕ УЯЗВИМОСТИ: Цена берется из базы, а не от клиента
     async buyItem(userId, itemId) {
         if (!userId) throw new Error("Unauthorized");
         
         return runTransaction(this.db, async (transaction) => {
-            // 1. Получаем пользователя
             const userRef = doc(this.db, 'users', userId);
             const userDoc = await transaction.get(userRef);
             if (!userDoc.exists()) throw "User error";
 
-            // 2. Получаем актуальный товар из БД
             const itemRef = doc(this.db, 'items', itemId);
             const itemDoc = await transaction.get(itemRef);
             if (!itemDoc.exists()) throw "Товар не найден или удален";
             
             const itemData = itemDoc.data();
-            const realPrice = itemData.price; // Доверяем только базе данных
+            const realPrice = itemData.price; 
 
             const currentBalance = userDoc.data().balance || 0;
             if (currentBalance < realPrice) throw "Недостаточно средств";
@@ -192,6 +189,18 @@ export class AdminService {
         });
     }
 
+    // --- НОВОЕ: Обновление данных пользователя ---
+    async updateUser(userId, data) {
+        const userRef = doc(this.db, 'users', userId);
+        // Фильтруем undefined поля
+        const cleanData = Object.fromEntries(
+            Object.entries(data).filter(([_, v]) => v !== undefined && v !== '')
+        );
+        if(cleanData.balance) cleanData.balance = parseFloat(cleanData.balance);
+        
+        await updateDoc(userRef, cleanData);
+    }
+
     async addItem(itemData) {
         if(!itemData.name || !itemData.price) throw new Error("Invalid item data");
         await addDoc(collection(this.db, 'items'), itemData);
@@ -211,9 +220,9 @@ export class AdminService {
         });
     }
 
-    async getUserInventory(userId) {
+    async getUserData(userId) {
         const snap = await getDoc(doc(this.db, 'users', userId));
-        return snap.exists() ? { inventory: snap.data().inventory || [], username: snap.data().username } : null;
+        return snap.exists() ? { id: snap.id, ...snap.data() } : null;
     }
 
     async removeUserItem(userId, itemIndex) {
@@ -230,8 +239,26 @@ export class AdminService {
         return inventory;
     }
 
+    // --- НОВОЕ: Выдача предмета (из магазина или кастомного) ---
+    async grantItemToUser(userId, itemData) {
+        const userRef = doc(this.db, 'users', userId);
+        
+        const newItem = {
+            itemId: itemData.id || 'custom_admin_gift',
+            name: itemData.name,
+            type: itemData.type,
+            description: itemData.description || 'Выдано командованием',
+            imageUrl: itemData.imageUrl || null,
+            purchaseDate: new Date().toISOString(),
+            uid: crypto.randomUUID()
+        };
+
+        await updateDoc(userRef, {
+            inventory: arrayUnion(newItem)
+        });
+    }
+
     async importSquadData() {
-        // Убрал длинный список для экономии места, он идентичен предыдущему
         const squad = []; 
         let count = 0;
         let errors = 0;

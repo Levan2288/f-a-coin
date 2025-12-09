@@ -21,9 +21,6 @@ class AppApplication {
         this.storeService = new StoreService(this.db);
         this.adminService = new AdminService(this.db);
         
-        // УДАЛЕНО: window.App = this; 
-        // Больше нет глобального доступа через консоль.
-        
         this.currentRoute = 'shop';
         this.currentAdminTargetUser = null; 
         
@@ -41,45 +38,43 @@ class AppApplication {
         }
     }
 
-    // --- ГЛАВНЫЙ ОБРАБОТЧИК СОБЫТИЙ (Вместо onclick в HTML) ---
     setupGlobalListeners() {
-        // 1. Обработка КЛИКОВ (Кнопки)
         document.addEventListener('click', (e) => {
-            // Ищем элемент с атрибутом data-action (сам элемент или его родитель)
             const target = e.target.closest('[data-action]');
             if (!target) return;
 
             const action = target.dataset.action;
-            const data = target.dataset; // Дополнительные данные (id, price и т.д.)
+            const data = target.dataset; 
 
-            // Роутинг
+            // Навигация
             if (action === 'navigate') this.navigate(data.route);
             
-            // Пользовательские действия
+            // Пользователь
             if (action === 'buy') this.handleBuy(data.id, data.price);
             if (action === 'transfer') this.handleTransfer();
             if (action === 'logout') this.authService.logout();
             
-            // Админские действия
+            // Админ
             if (action === 'deduct') this.handleDeduct();
             if (action === 'delete-item') this.handleDeleteItem(data.id);
-            if (action === 'open-admin-inventory') this.handleOpenAdminInventory(data.id);
+            if (action === 'manage-user') this.handleManageUser(data.id); // Новое название
             if (action === 'delete-user-item') this.handleDeleteUserItem(data.index);
             if (action === 'import-squad') this.handleImportSquad();
             
-            // Модалка
+            // UI Модалки
             if (action === 'close-modal') this.closeModal();
-            if (action === 'modal-overlay') { // Клик по фону
+            if (action === 'toggle-grant-form') {
+                document.getElementById('grant-item-form').classList.toggle('hidden');
+            }
+            if (action === 'modal-overlay') { 
                 if(e.target === e.currentTarget) this.closeModal();
             }
         });
 
-        // 2. Обработка ФОРМ (Submit)
         document.addEventListener('submit', async (e) => {
             e.preventDefault();
             const form = e.target;
             
-            // Логин не имеет data-action в HTML, проверяем ID
             if (form.id === 'login-form') {
                 await this.handleLogin();
                 return;
@@ -88,9 +83,12 @@ class AppApplication {
             const action = form.dataset.action;
             if (action === 'create-item') await this.handleCreateItem(form);
             if (action === 'create-user') await this.handleCreateUser(form);
+            
+            // НОВЫЕ ХЕНДЛЕРЫ
+            if (action === 'save-user-profile') await this.handleSaveUserProfile(form);
+            if (action === 'grant-item') await this.handleGrantItem(form);
         });
 
-        // 3. Обработка ПОИСКА (Input)
         document.addEventListener('input', (e) => {
             if (e.target.dataset.action === 'search-user') {
                 this.handleUserSearch(e.target.value);
@@ -139,7 +137,6 @@ class AppApplication {
             menuItems.push({ id: 'admin', icon: 'settings', label: 'Админ', admin: true });
         }
 
-        // Desktop
         document.getElementById('desktop-nav').innerHTML = menuItems.map(item => `
             <li>
                 <button data-action="navigate" data-route="${item.id}" 
@@ -150,7 +147,6 @@ class AppApplication {
             </li>
         `).join('');
 
-        // Mobile
         document.getElementById('mobile-nav').innerHTML = menuItems.map(item => `
             <button data-action="navigate" data-route="${item.id}"
                 class="flex flex-col items-center justify-center w-full py-1 transition-all duration-200
@@ -207,7 +203,6 @@ class AppApplication {
                 html = UI.renderWallet();
             
             } else if (route === 'admin') {
-                // ПРОВЕРКА ПРАВ
                 if (!this.authService.isAdmin()) throw new Error("Access Denied");
                 
                 const [users, items] = await Promise.all([
@@ -238,7 +233,7 @@ class AppApplication {
         } catch (e) {
             NotificationService.show(e.message || e, 'error');
         }
-}
+    }
 
     async handleTransfer() {
         const user = document.getElementById('t-user').value;
@@ -260,12 +255,10 @@ class AppApplication {
         }
     }
 
-    // --- ADMIN ACTIONS (С ЗАЩИТОЙ) ---
+    // --- ADMIN ACTIONS ---
     
     handleUserSearch(query) {
-        // Поиск работает только визуально, прав не требует, но можно скрыть если не админ
         if (!this.authService.isAdmin()) return;
-
         const term = query.toLowerCase();
         const rows = document.querySelectorAll('.user-row');
         rows.forEach(row => {
@@ -281,12 +274,7 @@ class AppApplication {
     }
 
     async handleDeduct() {
-        // ЗАЩИТА: Даже если вызвать функцию, без прав она не сработает
-        if (!this.authService.isAdmin()) {
-            NotificationService.show("Отказано в доступе", "error");
-            return;
-        }
-
+        if (!this.authService.isAdmin()) return;
         if(!confirm('Списать средства?')) return;
         try {
             await this.adminService.deductBalance(
@@ -299,11 +287,7 @@ class AppApplication {
     }
 
     async handleCreateItem(form) {
-        if (!this.authService.isAdmin()) {
-            NotificationService.show("Отказано в доступе", "error");
-            return;
-        }
-
+        if (!this.authService.isAdmin()) return;
         const f = form;
         try {
             await this.adminService.addItem({
@@ -319,11 +303,7 @@ class AppApplication {
     }
 
     async handleDeleteItem(id) {
-        if (!this.authService.isAdmin()) {
-            NotificationService.show("Отказано в доступе", "error");
-            return;
-        }
-
+        if (!this.authService.isAdmin()) return;
         if(!confirm('Удалить товар навсегда?')) return;
         try {
             await this.adminService.deleteItem(id);
@@ -333,11 +313,7 @@ class AppApplication {
     }
 
     async handleCreateUser(form) {
-        if (!this.authService.isAdmin()) {
-            NotificationService.show("Отказано в доступе", "error");
-            return;
-        }
-
+        if (!this.authService.isAdmin()) return;
         const f = form;
         try {
             await this.adminService.createUser({
@@ -356,9 +332,7 @@ class AppApplication {
     
     async handleImportSquad() {
         if (!this.authService.isAdmin()) return;
-
-        if(!confirm("Вы уверены? Это добавит около 30 пользователей.")) return;
-        NotificationService.show("Начинаем импорт...", "info");
+        if(!confirm("Вы уверены?")) return;
         try {
             const result = await this.adminService.importSquadData();
             NotificationService.show(`Импорт: ${result.count}`, "success");
@@ -368,9 +342,9 @@ class AppApplication {
         }
     }
 
-    // --- ADMIN INVENTORY MODAL ---
+    // --- ADMIN USER MANAGEMENT & MODAL ---
 
-    async handleOpenAdminInventory(userId) {
+    async handleManageUser(userId) {
         if (!this.authService.isAdmin()) return;
 
         this.currentAdminTargetUser = userId;
@@ -379,37 +353,88 @@ class AppApplication {
         overlay.innerHTML = '<div class="loader"></div>';
         
         try {
-            const data = await this.adminService.getUserInventory(userId);
-            this.renderModalContent(data);
+            // Загружаем данные пользователя И список товаров для выпадающего списка
+            const [userData, shopItems] = await Promise.all([
+                this.adminService.getUserData(userId),
+                this.storeService.getItems()
+            ]);
+            
+            this.renderModalContent(userData, shopItems);
         } catch(e) {
             this.closeModal();
-            NotificationService.show("Ошибка загрузки инвентаря", "error");
+            NotificationService.show("Ошибка загрузки данных", "error");
+            console.error(e);
         }
     }
 
-    renderModalContent(data) {
-        let invHtml = '';
-        if (data.inventory.length === 0) {
-            invHtml = '<div class="flex flex-col items-center justify-center h-40 text-gray-400"><i data-lucide="backpack" class="w-10 h-10 mb-2 opacity-50"></i><p>Инвентарь пуст</p></div>';
+    renderModalContent(userData, shopItems) {
+        const overlay = document.getElementById('modal-overlay');
+        overlay.dataset.action = "modal-overlay"; 
+        overlay.innerHTML = UI.renderAdminModal(userData, shopItems);
+        lucide.createIcons();
+    }
+
+    async handleSaveUserProfile(form) {
+        if (!this.authService.isAdmin()) return;
+        const userId = form.dataset.id;
+        
+        // Собираем данные формы
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+
+        try {
+            await this.adminService.updateUser(userId, data);
+            NotificationService.show("Профиль обновлен", "success");
+            
+            // Обновляем список (если изменился баланс или имя)
+            this.navigate('admin');
+            // Обновляем модалку не закрывая её
+            this.handleManageUser(userId);
+        } catch (e) {
+            NotificationService.show(e.message, "error");
+        }
+    }
+
+    async handleGrantItem(form) {
+        if (!this.authService.isAdmin()) return;
+        const userId = form.dataset.userid;
+        
+        // Логика выбора источника (Магазин или Кастом)
+        const shopItemJson = form.shopItemData.value;
+        const customName = form.customName.value;
+
+        let itemData = null;
+
+        if (shopItemJson) {
+            itemData = JSON.parse(shopItemJson);
+        } else if (customName) {
+            itemData = {
+                name: customName,
+                type: form.customType.value || 'acc',
+                description: form.customDesc.value || '',
+                price: 0 // Подарок
+            };
         } else {
-            invHtml = data.inventory.map((item, idx) => UI.renderInventoryItem(item, idx, true)).join('');
+            NotificationService.show("Выберите предмет или заполните данные", "error");
+            return;
         }
 
-        const overlay = document.getElementById('modal-overlay');
-        // Добавляем data-action для закрытия
-        overlay.dataset.action = "modal-overlay"; 
-        overlay.innerHTML = UI.renderAdminModal(data.username, invHtml);
-        lucide.createIcons();
+        try {
+            await this.adminService.grantItemToUser(userId, itemData);
+            NotificationService.show(`Предмет "${itemData.name}" выдан`, "success");
+            // Обновляем модалку
+            this.handleManageUser(userId);
+        } catch (e) {
+            NotificationService.show(e.message, "error");
+        }
     }
 
     async handleDeleteUserItem(index) {
         if (!this.authService.isAdmin()) return;
-
         if(!confirm('Изъять этот предмет у бойца?')) return;
         try {
-            const newInv = await this.adminService.removeUserItem(this.currentAdminTargetUser, index);
-            const data = await this.adminService.getUserInventory(this.currentAdminTargetUser);
-            this.renderModalContent(data);
+            await this.adminService.removeUserItem(this.currentAdminTargetUser, index);
+            this.handleManageUser(this.currentAdminTargetUser); // Перезагрузка модалки
             NotificationService.show('Предмет изъят', 'success');
         } catch(e) {
             NotificationService.show(e.message, 'error');
