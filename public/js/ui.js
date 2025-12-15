@@ -1,24 +1,28 @@
 export const UI = {
     renderItem(item) {
+        // Логика отображения картинки: используем object-contain чтобы фото влезало полностью
         const img = item.imageUrl && item.imageUrl.trim() !== ""
-            ? `<img src="${item.imageUrl}" class="h-40 w-full object-cover rounded-t-xl" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
-               <div class="hidden h-40 w-full bg-gray-100 flex items-center justify-center rounded-t-xl"><i data-lucide="box" class="w-10 h-10 text-gray-300"></i></div>`
-            : `<div class="h-40 w-full bg-gray-100 flex items-center justify-center rounded-t-xl"><i data-lucide="box" class="w-10 h-10 text-gray-300"></i></div>`;
+            ? `<img src="${item.imageUrl}" class="w-full h-48 object-contain bg-white rounded-t-xl group-hover:scale-105 transition-transform duration-300" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
+               <div class="hidden w-full h-48 bg-gray-50 flex items-center justify-center rounded-t-xl"><i data-lucide="image" class="w-10 h-10 text-gray-300"></i></div>`
+            : `<div class="w-full h-48 bg-gray-50 flex items-center justify-center rounded-t-xl"><i data-lucide="box" class="w-10 h-10 text-gray-300"></i></div>`;
 
+        // Добавлен data-action="view-details" для клика по всей карточке
         return `
-        <div class="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col fade-in group h-full">
-            <div class="relative">
+        <div data-action="view-details" data-id="${item.id}" class="bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col fade-in group h-full cursor-pointer border border-transparent hover:border-[#c1a270]/20 relative overflow-hidden">
+            <div class="relative border-b border-gray-100">
                 ${img}
-                <div class="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg shadow-sm">
+                <div class="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg shadow-sm border border-gray-100 z-10">
                     <span class="font-bold text-[#c1a270] text-sm">${item.price} A</span>
                 </div>
             </div>
             <div class="p-4 flex flex-col flex-1">
-                <h3 class="font-bold text-lg text-gray-800 leading-tight mb-1 line-clamp-1">${item.name}</h3>
+                <h3 class="font-bold text-lg text-gray-800 leading-tight mb-1 line-clamp-1 group-hover:text-[#c1a270] transition-colors">${item.name}</h3>
                 <p class="text-gray-500 text-xs mb-4 flex-1 line-clamp-2">${item.description || 'Нет описания'}</p>
-                <button data-action="buy" data-id="${item.id}" data-price="${item.price}"
-                    class="w-full bg-gray-900 text-white py-3 rounded-lg hover:bg-[#c1a270] transition-colors font-bold text-sm active:scale-95 transform shadow-md">
-                    Купить
+                
+                <!-- onclick="event.stopPropagation()" предотвращает открытие модалки при клике на кнопку Купить -->
+                <button onclick="event.stopPropagation()" data-action="buy" data-id="${item.id}" data-price="${item.price}"
+                    class="w-full bg-gray-900 text-white py-3 rounded-lg hover:bg-[#c1a270] transition-colors font-bold text-sm active:scale-95 transform shadow-md flex items-center justify-center gap-2">
+                    <i data-lucide="shopping-cart" class="w-4 h-4"></i> Купить
                 </button>
             </div>
         </div>`;
@@ -29,11 +33,20 @@ export const UI = {
             ? `<button data-action="delete-user-item" data-index="${index}" class="text-red-500 hover:bg-red-50 p-2 rounded-lg transition" title="Изъять предмет"><i data-lucide="trash-2" class="w-5 h-5"></i></button>`
             : `<div class="px-2 py-1 bg-gray-50 rounded text-[10px] font-bold text-gray-400 uppercase tracking-wider">Личное</div>`;
 
+        // Логика: если есть картинка, показываем её, иначе иконку
+        let iconOrImg;
+        if (item.imageUrl && item.imageUrl.trim() !== "") {
+            iconOrImg = `<img src="${item.imageUrl}" class="w-full h-full object-cover rounded-lg" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
+                         <i data-lucide="${this.getIcon(item.type)}" class="hidden w-6 h-6"></i>`;
+        } else {
+            iconOrImg = `<i data-lucide="${this.getIcon(item.type)}" class="w-6 h-6"></i>`;
+        }
+
         return `
         <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between fade-in hover:shadow-md transition-shadow">
             <div class="flex items-center gap-3 overflow-hidden">
-                <div class="w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center flex-shrink-0 text-[#c1a270]">
-                    <i data-lucide="${this.getIcon(item.type)}" class="w-6 h-6"></i>
+                <div class="w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center flex-shrink-0 text-[#c1a270] relative">
+                    ${iconOrImg}
                 </div>
                 <div class="min-w-0">
                     <h4 class="font-bold text-gray-800 text-sm truncate">${item.name}</h4>
@@ -44,6 +57,47 @@ export const UI = {
                 ${actionBtn}
             </div>
         </div>`;
+    },
+
+    // НОВОЕ: Модальное окно просмотра товара
+    renderProductDetailsModal(item) {
+        const img = item.imageUrl && item.imageUrl.trim() !== ""
+            ? `<img src="${item.imageUrl}" class="w-full max-h-[40vh] object-contain bg-white rounded-lg mb-4" onerror="this.style.display='none'">`
+            : `<div class="w-full h-40 bg-gray-100 flex items-center justify-center rounded-lg mb-4"><i data-lucide="image-off" class="w-12 h-12 text-gray-300"></i></div>`;
+
+        return `
+        <div class="bg-white md:rounded-2xl rounded-t-2xl shadow-2xl w-full md:max-w-lg max-h-[90vh] flex flex-col animate-in slide-in-from-bottom duration-300 md:animate-in md:fade-in md:zoom-in overflow-hidden relative">
+            
+            <button data-action="close-modal" class="absolute top-4 right-4 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full p-2 z-10 transition-colors">
+                <i data-lucide="x" class="w-5 h-5 pointer-events-none"></i>
+            </button>
+
+            <div class="p-6 overflow-y-auto no-scrollbar">
+                ${img}
+                
+                <div class="flex justify-between items-start mb-2">
+                    <h2 class="text-2xl font-bold text-gray-900 leading-tight">${item.name}</h2>
+                    <span class="bg-[#c1a270]/10 text-[#c1a270] px-3 py-1 rounded-full font-bold whitespace-nowrap ml-2 text-lg">
+                        ${item.price} A
+                    </span>
+                </div>
+                
+                <div class="flex items-center gap-2 mb-4 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                    <span class="bg-gray-100 px-2 py-1 rounded border border-gray-200">${item.type}</span>
+                </div>
+
+                <div class="prose prose-sm text-gray-600 mb-8 leading-relaxed">
+                    <p>${item.description || "Описание отсутствует."}</p>
+                </div>
+
+                <button data-action="buy" data-id="${item.id}" data-price="${item.price}"
+                    class="w-full bg-[#c1a270] text-white py-4 rounded-xl hover:bg-[#a68a5a] transition-all font-bold text-lg shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-2 sticky bottom-0">
+                    <i data-lucide="shopping-bag" class="w-5 h-5"></i>
+                    Приобрести
+                </button>
+            </div>
+        </div>
+        `;
     },
 
     renderWallet() {
@@ -136,8 +190,8 @@ export const UI = {
                         ${items.map(i => `
                             <div class="flex justify-between items-center p-3 border rounded hover:bg-gray-50 group transition-colors">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 bg-gray-100 rounded flex items-center justify-center shrink-0">
-                                        <i data-lucide="${this.getIcon(i.type)}" class="w-5 h-5 text-gray-500"></i>
+                                    <div class="w-10 h-10 bg-gray-100 rounded flex items-center justify-center shrink-0 overflow-hidden">
+                                        ${i.imageUrl ? `<img src="${i.imageUrl}" class="w-full h-full object-cover">` : `<i data-lucide="${this.getIcon(i.type)}" class="w-5 h-5 text-gray-500"></i>`}
                                     </div>
                                     <div class="min-w-0">
                                         <span class="font-bold block text-sm text-gray-800 truncate">${i.name}</span>
@@ -200,16 +254,12 @@ export const UI = {
         `;
     },
 
-    // --- ИСПРАВЛЕНО: УБРАН onclick="event.stopPropagation()" ---
     renderAdminModal(user, shopItems = []) {
         const inventory = user.inventory || [];
-        
-        // Генерация опций для селекта магазина
         const shopOptions = shopItems.map(item => 
             `<option value='${JSON.stringify(item)}'>${item.name} (${item.price} A)</option>`
         ).join('');
 
-        // Убран onclick="event.stopPropagation()" из главного div
         return `
             <div class="bg-white md:rounded-xl rounded-t-2xl shadow-2xl w-full md:max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-300 md:animate-in md:fade-in md:zoom-in">
                 <!-- HEADER -->

@@ -23,6 +23,7 @@ class AppApplication {
         
         this.currentRoute = 'shop';
         this.currentAdminTargetUser = null; 
+        this.shopItems = []; // Кэш товаров для быстрого просмотра
         
         this.init();
     }
@@ -54,6 +55,9 @@ class AppApplication {
             if (action === 'transfer') this.handleTransfer();
             if (action === 'logout') this.authService.logout();
             
+            // НОВОЕ: Просмотр товара
+            if (action === 'view-details') this.handleViewDetails(data.id);
+            
             // Админ
             if (action === 'deduct') this.handleDeduct();
             if (action === 'delete-item') this.handleDeleteItem(data.id);
@@ -66,9 +70,8 @@ class AppApplication {
             if (action === 'toggle-grant-form') {
                 document.getElementById('grant-item-form').classList.toggle('hidden');
             }
-            // ИСПРАВЛЕНО: Закрытие по клику на фон
+            // Закрытие по клику на фон
             if (action === 'modal-overlay') { 
-                // Закрываем только если кликнули именно по затемненному фону, а не по контенту
                 if(e.target === target) this.closeModal();
             }
         });
@@ -187,10 +190,10 @@ class AppApplication {
                 html = UI.renderUserProfile(this.authService.currentUser);
 
             } else if (route === 'shop') {
-                const items = await this.storeService.getItems();
+                this.shopItems = await this.storeService.getItems();
                 html = `<h2 class="text-2xl font-bold mb-6 text-gray-800">Военторг</h2>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 pb-20 md:pb-0">
-                            ${items.map(i => UI.renderItem(i)).join('')}
+                            ${this.shopItems.map(i => UI.renderItem(i)).join('')}
                         </div>`;
             
             } else if (route === 'inventory') {
@@ -223,6 +226,18 @@ class AppApplication {
 
     // --- USER ACTIONS ---
 
+    // НОВОЕ: Обработчик просмотра товара
+    handleViewDetails(id) {
+        const item = this.shopItems.find(i => i.id === id);
+        if (!item) return;
+
+        const overlay = document.getElementById('modal-overlay');
+        overlay.dataset.action = "modal-overlay";
+        overlay.innerHTML = UI.renderProductDetailsModal(item);
+        overlay.classList.remove('hidden');
+        lucide.createIcons();
+    }
+
     async handleBuy(id, price) {
         if(!confirm(`Купить предмет за ${price} A?`)) return;
         try {
@@ -230,6 +245,7 @@ class AppApplication {
             const item = items.find(i => i.id === id);
             await this.storeService.buyItem(this.authService.currentUser.id, id); 
             this.updateSidebar(); 
+            this.closeModal(); // Закрыть модалку, если покупка была из неё
             NotificationService.show(`Приобретено: ${item.name}`, 'success');
         } catch (e) {
             NotificationService.show(e.message || e, 'error');
