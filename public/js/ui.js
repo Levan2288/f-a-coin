@@ -1,12 +1,11 @@
 export const UI = {
     renderItem(item) {
-        // Логика отображения картинки: используем object-contain чтобы фото влезало полностью
         const img = item.imageUrl && item.imageUrl.trim() !== ""
             ? `<img src="${item.imageUrl}" class="w-full h-48 object-contain bg-white rounded-t-xl group-hover:scale-105 transition-transform duration-300" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
                <div class="hidden w-full h-48 bg-gray-50 flex items-center justify-center rounded-t-xl"><i data-lucide="image" class="w-10 h-10 text-gray-300"></i></div>`
             : `<div class="w-full h-48 bg-gray-50 flex items-center justify-center rounded-t-xl"><i data-lucide="box" class="w-10 h-10 text-gray-300"></i></div>`;
 
-        // Добавлен data-action="view-details" для клика по всей карточке
+        // ИСПРАВЛЕНИЕ: Убран onclick="event.stopPropagation()" у кнопки
         return `
         <div data-action="view-details" data-id="${item.id}" class="bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col fade-in group h-full cursor-pointer border border-transparent hover:border-[#c1a270]/20 relative overflow-hidden">
             <div class="relative border-b border-gray-100">
@@ -19,8 +18,7 @@ export const UI = {
                 <h3 class="font-bold text-lg text-gray-800 leading-tight mb-1 line-clamp-1 group-hover:text-[#c1a270] transition-colors">${item.name}</h3>
                 <p class="text-gray-500 text-xs mb-4 flex-1 line-clamp-2">${item.description || 'Нет описания'}</p>
                 
-                <!-- onclick="event.stopPropagation()" предотвращает открытие модалки при клике на кнопку Купить -->
-                <button onclick="event.stopPropagation()" data-action="buy" data-id="${item.id}" data-price="${item.price}"
+                <button data-action="buy" data-id="${item.id}" data-price="${item.price}"
                     class="w-full bg-gray-900 text-white py-3 rounded-lg hover:bg-[#c1a270] transition-colors font-bold text-sm active:scale-95 transform shadow-md flex items-center justify-center gap-2">
                     <i data-lucide="shopping-cart" class="w-4 h-4"></i> Купить
                 </button>
@@ -33,7 +31,6 @@ export const UI = {
             ? `<button data-action="delete-user-item" data-index="${index}" class="text-red-500 hover:bg-red-50 p-2 rounded-lg transition" title="Изъять предмет"><i data-lucide="trash-2" class="w-5 h-5"></i></button>`
             : `<div class="px-2 py-1 bg-gray-50 rounded text-[10px] font-bold text-gray-400 uppercase tracking-wider">Личное</div>`;
 
-        // Логика: если есть картинка, показываем её, иначе иконку
         let iconOrImg;
         if (item.imageUrl && item.imageUrl.trim() !== "") {
             iconOrImg = `<img src="${item.imageUrl}" class="w-full h-full object-cover rounded-lg" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
@@ -59,7 +56,6 @@ export const UI = {
         </div>`;
     },
 
-    // НОВОЕ: Модальное окно просмотра товара
     renderProductDetailsModal(item) {
         const img = item.imageUrl && item.imageUrl.trim() !== ""
             ? `<img src="${item.imageUrl}" class="w-full max-h-[40vh] object-contain bg-white rounded-lg mb-4" onerror="this.style.display='none'">`
@@ -120,6 +116,92 @@ export const UI = {
                     </button>
                 </div>
             </div>`;
+    },
+
+    renderLogs(logs, filterUser = null) {
+        // Фильтрация (если выбран юзер по клику)
+        const displayLogs = filterUser 
+            ? logs.filter(l => l.username === filterUser) 
+            : logs;
+
+        const rows = displayLogs.map(log => {
+            // Определение цвета для типа действия
+            let typeColor = 'text-gray-500';
+            let icon = 'info';
+            if (log.type === 'purchase') { typeColor = 'text-green-600'; icon = 'shopping-cart'; }
+            if (log.type === 'admin_grant') { typeColor = 'text-blue-600'; icon = 'gift'; }
+            if (log.type === 'admin_revoke') { typeColor = 'text-red-600'; icon = 'trash-2'; }
+            if (log.type === 'transfer') { typeColor = 'text-orange-600'; icon = 'arrow-right-left'; }
+
+            const date = new Date(log.timestamp).toLocaleString('ru-RU', {
+                day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+            });
+
+            return `
+            <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                <td class="p-4 text-xs text-gray-400 font-mono whitespace-nowrap">${date}</td>
+                <td class="p-4">
+                    <button data-action="filter-logs-user" data-username="${log.username}" 
+                        class="font-bold text-gray-800 hover:text-[#c1a270] hover:underline transition-colors flex items-center gap-1">
+                        ${log.username}
+                        ${filterUser ? '<i data-lucide="filter" class="w-3 h-3 text-[#c1a270]"></i>' : ''}
+                    </button>
+                </td>
+                <td class="p-4">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="${icon}" class="w-4 h-4 ${typeColor}"></i>
+                        <span class="text-sm font-medium text-gray-700">${log.itemName || 'Действие с балансом'}</span>
+                    </div>
+                </td>
+                <td class="p-4 text-right">
+                    ${log.price 
+                        ? `<span class="font-bold text-gray-900">${log.price} A</span>` 
+                        : `<span class="text-gray-400 text-xs">-</span>`}
+                </td>
+            </tr>
+            `;
+        }).join('');
+
+        return `
+        <div class="max-w-4xl mx-auto fade-in pb-20">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                    <i data-lucide="clipboard-list" class="text-[#c1a270]"></i> Журнал операций
+                </h2>
+                
+                <div class="flex items-center gap-2 w-full md:w-auto">
+                    ${filterUser ? `
+                        <button data-action="reset-logs" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors">
+                            <i data-lucide="x" class="w-3 h-3"></i> ${filterUser}
+                        </button>
+                    ` : ''}
+                    <div class="relative flex-1 md:w-64">
+                        <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-gray-400"></i>
+                        <input id="logs-search" type="text" placeholder="Поиск по позывному..." 
+                            class="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#c1a270] outline-none">
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 border-b border-gray-100 text-xs uppercase text-gray-500 tracking-wider">
+                                <th class="p-4 font-bold">Время</th>
+                                <th class="p-4 font-bold">Боец</th>
+                                <th class="p-4 font-bold">Действие / Предмет</th>
+                                <th class="p-4 font-bold text-right">Сумма</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-table-body">
+                            ${rows.length > 0 ? rows : `<tr><td colspan="4" class="p-8 text-center text-gray-400">Записей не найдено</td></tr>`}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        `;
     },
 
     renderUserProfile(user) {

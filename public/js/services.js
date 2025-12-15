@@ -4,6 +4,35 @@ import {
     onSnapshot, setDoc, arrayUnion, increment, getDoc, writeBatch
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
+// --- НОВЫЙ СЕРВИС ЛОГОВ ---
+export class LogsService {
+    constructor(db) {
+        this.db = db;
+    }
+
+    // Запись события в лог
+    async addLog(eventData) {
+        // eventData: { type, username, targetUser?, itemName, price?, details? }
+        try {
+            await addDoc(collection(this.db, 'logs'), {
+                ...eventData,
+                timestamp: new Date().toISOString()
+            });
+        } catch (e) {
+            console.error("Failed to write log:", e);
+        }
+    }
+
+    // Получение всех логов (сортировка будет на клиенте для гибкости)
+    async getAllLogs() {
+        const snap = await getDocs(collection(this.db, 'logs'));
+        // Сортируем: сначала новые
+        return snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    }
+}
+
 export class NotificationService {
     static show(message, type = 'info') {
         const container = document.getElementById('toast-container');
@@ -189,10 +218,8 @@ export class AdminService {
         });
     }
 
-    // --- НОВОЕ: Обновление данных пользователя ---
     async updateUser(userId, data) {
         const userRef = doc(this.db, 'users', userId);
-        // Фильтруем undefined поля
         const cleanData = Object.fromEntries(
             Object.entries(data).filter(([_, v]) => v !== undefined && v !== '')
         );
@@ -232,14 +259,16 @@ export class AdminService {
         if (!userSnap.exists()) throw new Error("User not found");
         
         const inventory = userSnap.data().inventory || [];
+        let removedItem = null;
+
         if (itemIndex >= 0 && itemIndex < inventory.length) {
+            removedItem = inventory[itemIndex];
             inventory.splice(itemIndex, 1);
             await updateDoc(userRef, { inventory });
         }
-        return inventory;
+        return { inventory, removedItem };
     }
 
-    // --- НОВОЕ: Выдача предмета (из магазина или кастомного) ---
     async grantItemToUser(userId, itemData) {
         const userRef = doc(this.db, 'users', userId);
         

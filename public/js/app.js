@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-import { AuthService, StoreService, AdminService, NotificationService } from './services.js';
+import { AuthService, StoreService, AdminService, NotificationService, LogsService } from './services.js';
 import { UI } from './ui.js';
 
 const firebaseConfig = {
@@ -20,10 +20,13 @@ class AppApplication {
         this.authService = new AuthService(this.db);
         this.storeService = new StoreService(this.db);
         this.adminService = new AdminService(this.db);
+        this.logsService = new LogsService(this.db); // Инициализация сервиса логов
         
         this.currentRoute = 'shop';
         this.currentAdminTargetUser = null; 
-        this.shopItems = []; // Кэш товаров для быстрого просмотра
+        this.shopItems = []; 
+        this.logs = []; // Кэш логов
+        this.logsFilterUser = null; // Текущий фильтр по юзеру
         
         this.init();
     }
@@ -65,6 +68,10 @@ class AppApplication {
             if (action === 'delete-user-item') this.handleDeleteUserItem(data.index);
             if (action === 'import-squad') this.handleImportSquad();
             
+            // ЛОГИ
+            if (action === 'filter-logs-user') this.handleFilterLogs(data.username);
+            if (action === 'reset-logs') this.handleResetLogs();
+
             // UI Модалки
             if (action === 'close-modal') this.closeModal();
             if (action === 'toggle-grant-form') {
@@ -96,6 +103,9 @@ class AppApplication {
         document.addEventListener('input', (e) => {
             if (e.target.dataset.action === 'search-user') {
                 this.handleUserSearch(e.target.value);
+            }
+            if (e.target.id === 'logs-search') {
+                this.handleLogsSearch(e.target.value);
             }
         });
     }
@@ -139,6 +149,7 @@ class AppApplication {
 
         if (this.authService.isAdmin()) {
             menuItems.push({ id: 'admin', icon: 'settings', label: 'Админ', admin: true });
+            menuItems.push({ id: 'logs', icon: 'clipboard-list', label: 'Логи', admin: true }); // Добавлен пункт меню
         }
 
         document.getElementById('desktop-nav').innerHTML = menuItems.map(item => `
@@ -214,6 +225,14 @@ class AppApplication {
                     this.storeService.getItems()
                 ]);
                 html = UI.renderAdminDashboard(users, items);
+            } else if (route === 'logs') {
+                if (!this.authService.isAdmin()) throw new Error("Access Denied");
+                
+                // Сбрасываем фильтр при первом заходе
+                if (!this.logsFilterUser) this.logsFilterUser = null; 
+                
+                this.logs = await this.logsService.getAllLogs();
+                html = UI.renderLogs(this.logs, this.logsFilterUser);
             }
 
             container.innerHTML = html;
@@ -226,7 +245,6 @@ class AppApplication {
 
     // --- USER ACTIONS ---
 
-    // НОВОЕ: Обработчик просмотра товара
     handleViewDetails(id) {
         const item = this.shopItems.find(i => i.id === id);
         if (!item) return;
@@ -243,9 +261,20 @@ class AppApplication {
         try {
             const items = await this.storeService.getItems();
             const item = items.find(i => i.id === id);
-            await this.storeService.buyItem(this.authService.currentUser.id, id); 
+            const user = this.authService.currentUser;
+
+            await this.storeService.buyItem(user.id, id); 
+            
+            // ЛОГИРОВАНИЕ ПОКУПКИ
+            await this.logsService.addLog({
+                type: 'purchase',
+                username: user.username,
+                itemName: item.name,
+                price: parseFloat(price)
+            });
+
             this.updateSidebar(); 
-            this.closeModal(); // Закрыть модалку, если покупка была из неё
+            this.closeModal();
             NotificationService.show(`Приобретено: ${item.name}`, 'success');
         } catch (e) {
             NotificationService.show(e.message || e, 'error');
@@ -263,6 +292,15 @@ class AppApplication {
 
         try {
             await this.storeService.transfer(this.authService.currentUser.id, user, amount);
+            
+            // ЛОГИРОВАНИЕ ПЕРЕВОДА (Опционально, но полезно)
+            await this.logsService.addLog({
+                type: 'transfer',
+                username: this.authService.currentUser.username,
+                itemName: `Перевод пользователю ${user}`,
+                price: parseFloat(amount)
+            });
+
             this.updateSidebar(); 
             NotificationService.show(`Перевод ${amount} A бойцу ${user} выполнен`, 'success');
             document.getElementById('t-user').value = '';
@@ -270,6 +308,39 @@ class AppApplication {
         } catch (e) {
             NotificationService.show(e.message || e, 'error');
         }
+    }
+
+    // --- LOGS ACTIONS ---
+    
+    handleFilterLogs(username) {
+        this.logsFilterUser = username;
+        this.renderLogsView();
+    }
+
+    handleResetLogs() {
+        this.logsFilterUser = null;
+        this.renderLogsView();
+    }
+
+    handleLogsSearch(query) {
+        // Живой поиск в таблице логов
+        const term = query.toLowerCase();
+        const rows = document.querySelectorAll('#logs-table-body tr');
+        rows.forEach(row => {
+            const text = row.innerText.toLowerCase();
+            if (text.includes(term)) {
+                row.classList.remove('hidden');
+            } else {
+                row.classList.add('hidden');
+            }
+        });
+    }
+
+    renderLogsView() {
+        // Перерисовка контента логов без полной перезагрузки
+        const container = document.getElementById('content-area');
+        container.innerHTML = UI.renderLogs(this.logs, this.logsFilterUser);
+        lucide.createIcons();
     }
 
     // --- ADMIN ACTIONS ---
@@ -370,7 +441,6 @@ class AppApplication {
         overlay.innerHTML = '<div class="loader"></div>';
         
         try {
-            // Загружаем данные пользователя И список товаров для выпадающего списка
             const [userData, shopItems] = await Promise.all([
                 this.adminService.getUserData(userId),
                 this.storeService.getItems()
@@ -395,7 +465,6 @@ class AppApplication {
         if (!this.authService.isAdmin()) return;
         const userId = form.dataset.id;
         
-        // Собираем данные формы
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
 
@@ -403,9 +472,7 @@ class AppApplication {
             await this.adminService.updateUser(userId, data);
             NotificationService.show("Профиль обновлен", "success");
             
-            // Обновляем список (если изменился баланс или имя)
             this.navigate('admin');
-            // Обновляем модалку не закрывая её
             this.handleManageUser(userId);
         } catch (e) {
             NotificationService.show(e.message, "error");
@@ -416,7 +483,6 @@ class AppApplication {
         if (!this.authService.isAdmin()) return;
         const userId = form.dataset.userid;
         
-        // Логика выбора источника (Магазин или Кастом)
         const shopItemJson = form.shopItemData.value;
         const customName = form.customName.value;
 
@@ -429,8 +495,8 @@ class AppApplication {
                 name: customName,
                 type: form.customType.value || 'acc',
                 description: form.customDesc.value || '',
-                imageUrl: form.customImage.value || null, // Добавлено чтение картинки
-                price: 0 // Подарок
+                imageUrl: form.customImage.value || null, 
+                price: 0 
             };
         } else {
             NotificationService.show("Выберите предмет или заполните данные", "error");
@@ -438,9 +504,20 @@ class AppApplication {
         }
 
         try {
+            // Получаем данные пользователя для лога
+            const targetUser = await this.adminService.getUserData(userId);
+
             await this.adminService.grantItemToUser(userId, itemData);
+            
+            // ЛОГИРОВАНИЕ ВЫДАЧИ
+            await this.logsService.addLog({
+                type: 'admin_grant',
+                username: targetUser.username,
+                itemName: `Выдан админом: ${itemData.name}`,
+                price: itemData.price || 0
+            });
+
             NotificationService.show(`Предмет "${itemData.name}" выдан`, "success");
-            // Обновляем модалку
             this.handleManageUser(userId);
         } catch (e) {
             NotificationService.show(e.message, "error");
@@ -451,8 +528,23 @@ class AppApplication {
         if (!this.authService.isAdmin()) return;
         if(!confirm('Изъять этот предмет у бойца?')) return;
         try {
-            await this.adminService.removeUserItem(this.currentAdminTargetUser, index);
-            this.handleManageUser(this.currentAdminTargetUser); // Перезагрузка модалки
+            // Сначала получаем информацию о юзере и предмете
+            const targetUser = await this.adminService.getUserData(this.currentAdminTargetUser);
+            
+            // Удаляем и получаем удаленный предмет обратно
+            const { removedItem } = await this.adminService.removeUserItem(this.currentAdminTargetUser, index);
+            
+            if(removedItem) {
+                // ЛОГИРОВАНИЕ УДАЛЕНИЯ
+                await this.logsService.addLog({
+                    type: 'admin_revoke',
+                    username: targetUser.username,
+                    itemName: `Изъят админом: ${removedItem.name}`,
+                    price: 0
+                });
+            }
+
+            this.handleManageUser(this.currentAdminTargetUser); 
             NotificationService.show('Предмет изъят', 'success');
         } catch(e) {
             NotificationService.show(e.message, 'error');
