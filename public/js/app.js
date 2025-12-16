@@ -141,10 +141,10 @@ class AppApplication {
 
     renderNav() {
         const menuItems = [
-            { id: 'profile', icon: 'user', label: 'Профиль' },
             { id: 'shop', icon: 'shopping-bag', label: 'Военторг' },
             { id: 'inventory', icon: 'backpack', label: 'Инвентарь' },
             { id: 'wallet', icon: 'arrow-right-left', label: 'Переводы' },
+            { id: 'profile', icon: 'user', label: 'Профиль' },
         ];
 
         if (this.authService.isAdmin()) {
