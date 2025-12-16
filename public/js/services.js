@@ -25,12 +25,13 @@ export class LogsService {
 
     // Получение всех логов (сортировка будет на клиенте для гибкости)
     async getAllLogs() {
-        const snap = await getDocs(collection(this.db, 'logs'));
-        // Сортируем: сначала новые
-        return snap.docs
-            .map(d => ({ id: d.id, ...d.data() }))
-            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    }
+    const snap = await getDocs(collection(this.db, 'logs'));
+    return snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        // Добавляем фильтрацию по типу purchase
+        .filter(log => log.type === 'purchase')
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+}
 }
 
 export class NotificationService {

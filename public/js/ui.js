@@ -119,13 +119,15 @@ export const UI = {
     },
 
     renderLogs(logs, filterUser = null) {
-        // Фильтрация (если выбран юзер по клику)
-        const displayLogs = filterUser 
-            ? logs.filter(l => l.username === filterUser) 
-            : logs;
+        // Изменяем логику фильтрации: оставляем только тип 'purchase'
+        let displayLogs = logs.filter(l => l.type === 'purchase');
+
+        // Если дополнительно выбран пользователь, фильтруем и по нему
+        if (filterUser) {
+            displayLogs = displayLogs.filter(l => l.username === filterUser);
+        }
 
         const rows = displayLogs.map(log => {
-            // Определение цвета для типа действия
             let typeColor = 'text-gray-500';
             let icon = 'info';
             if (log.type === 'purchase') { typeColor = 'text-green-600'; icon = 'shopping-cart'; }
