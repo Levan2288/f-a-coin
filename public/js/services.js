@@ -207,15 +207,15 @@ export class AdminService {
         if (!(await getDocs(q)).empty) throw new Error(`Пользователь ${username} уже существует`);
         
         await addDoc(collection(this.db, 'users'), { 
-            username, 
-            password, 
-            balance: parseFloat(balance), 
-            role, 
-            position,
-            unit,
-            certificate,
-            notes,
-            inventory: [] 
+                username, 
+                password, 
+                balance: parseFloat(balance), 
+                role, 
+                position,
+                unit,
+                certificate,
+                notes,
+                inventory: [] 
         });
     }
 
@@ -288,10 +288,347 @@ export class AdminService {
         });
     }
 
+    // --- НАЧАЛО ИЗМЕНЕНИЙ В AdminService ---
+
+    /**
+     * Основной метод импорта штатки
+     */
+    // В классе AdminService (services.js)
+
+    // Внутри класса AdminService
+
+    // --- НАЧАЛО ИЗМЕНЕНИЙ В AdminService ---
+
+    /**
+     * Основной метод импорта штатки
+     */
+    // --- НАЧАЛО ИЗМЕНЕНИЙ В AdminService ---
+
+    /**
+     * Основной метод импорта штатки + Автосоздание админа
+     */
     async importSquadData() {
-        const squad = []; 
-        let count = 0;
-        let errors = 0;
-        return { count, errors };
+        try {
+            // --- ЭТАП 0: АВТОМАТИЧЕСКОЕ СОЗДАНИЕ АДМИНА (если его нет) ---
+            const adminQuery = query(collection(this.db, 'users'), where('role', '==', 'admin'));
+            const adminSnap = await getDocs(adminQuery);
+            
+            if (adminSnap.empty) {
+                console.log("Администратор не найден. Создаем дефолтного администратора...");
+                // Создаем админа с фиксированным ID 'admin' или авто-генерируемым
+                const defaultAdminData = {
+                    username: "admin",
+                    password: "admin", // Обязательно смените пароль после входа!
+                    balance: 999999,
+                    role: "admin",
+                    position: "Commander",
+                    unit: "HQ",
+                    certificate: "ROOT_ACCESS",
+                    notes: "System generated admin",
+                    inventory: [], // Пустой инвентарь
+                    createdAt: new Date().toISOString()
+                };
+                
+                // Используем setDoc напрямую для немедленного создания
+                await setDoc(doc(this.db, 'users', 'admin_user'), defaultAdminData);
+                console.log("Администратор создан успешно.");
+            }
+
+            // --- ЭТАП 1: ИМПОРТ ИЗ ФАЙЛА ---
+            // 1. Запрашиваем файл у пользователя
+            const file = await this._pickFile();
+            const text = await file.text();
+            
+            // 2. Парсим CSV
+            const rows = this._parseCSV(text);
+            if (rows.length < 2) return { count: 0, errors: "Пустой файл" };
+
+            // 3. Получаем текущих пользователей (для проверки обновлений)
+            const existingUsersSnap = await getDocs(collection(this.db, 'users'));
+            const userMap = new Map(); 
+            existingUsersSnap.forEach(doc => {
+                userMap.set(doc.data().username, doc.ref);
+            });
+
+            // 4. Подготовка Batch
+            let batch = writeBatch(this.db);
+            let operationsCount = 0;
+            const BATCH_LIMIT = 450; 
+
+            // Пропускаем заголовок (i = 1)
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                
+                // row[0] - Позывной. Если его нет, пропускаем строку, чтобы не создавать пустые доки
+                if (!row[0] || row[0].trim() === '') continue; 
+
+                const fullUsername = row[0].trim(); // Имя как оно есть в файле
+
+                // Парсинг баланса (замена запятой на точку, защита от NaN)
+                let parsedBalance = 0;
+                if (row[4]) {
+                    const cleanBalance = row[4].toString().replace(',', '.').replace(/\s/g, '');
+                    parsedBalance = parseFloat(cleanBalance);
+                    if (isNaN(parsedBalance)) parsedBalance = 0;
+                }
+
+                // ФОРМИРОВАНИЕ ОБЪЕКТА (Строго по вашему запросу)
+                const userData = {
+                    username: fullUsername,
+                    password: fullUsername, // Пароль по умолчанию = логин
+                    balance: parsedBalance,
+                    role: 'user',           // Роль всегда user при импорте
+                    position: row[1] ? row[1].trim() : '',
+                    unit: row[2] ? row[2].trim() : '',
+                    certificate: row[3] ? row[3].trim() : '',
+                    notes: row[6] ? row[6].trim() : '',
+                    inventory: [],          // Всегда пустой массив
+                    
+                    // Системное поле (можно убрать, если не нужно, но полезно для сортировки)
+                    updatedAt: new Date().toISOString()
+                };
+
+                // Удаляем поля undefined, чтобы Firestore не ругался, 
+                // НО оставляем пустые строки и 0, так как они валидны.
+                Object.keys(userData).forEach(key => userData[key] === undefined && delete userData[key]);
+
+                if (userMap.has(fullUsername)) {
+                    // --- ОБНОВЛЕНИЕ ---
+                    const userRef = userMap.get(fullUsername);
+                    // При обновлении перезаписываем только данные штатки,
+                    // НЕ трогаем пароль, роль и инвентарь, если они уже есть у бойца
+                    const dataToUpdate = {
+                        position: userData.position,
+                        unit: userData.unit,
+                        certificate: userData.certificate,
+                        balance: userData.balance,
+                        notes: userData.notes,
+                        updatedAt: userData.updatedAt
+                    };
+                    batch.update(userRef, dataToUpdate);
+                } else {
+                    // --- СОЗДАНИЕ НОВОГО ---
+                    const newUserRef = doc(collection(this.db, 'users'));
+                    // При создании пишем полный объект userData
+                    batch.set(newUserRef, {
+                        ...userData,
+                        createdAt: new Date().toISOString()
+                    });
+                }
+
+                operationsCount++;
+                
+                // Управление лимитами батча
+                if (operationsCount >= BATCH_LIMIT) {
+                    await batch.commit();
+                    operationsCount = 0;
+                    batch = writeBatch(this.db);
+                }
+            }
+
+            // Финальный коммит
+            if (operationsCount > 0) {
+                await batch.commit();
+            }
+
+            return { count: rows.length - 1, errors: 0 };
+
+        } catch (e) {
+            console.error("Import error:", e);
+            throw e;
+        }
+    }
+
+    async importSquadData() {
+        // ... код импорта ...
+        // Здесь мы вызываем this._pickFile(), поэтому он должен быть внутри класса
+        const file = await this._pickFile(); 
+        // ...
+    }
+
+    // --- ВАЖНО: Метод должен быть ДО закрывающей скобки класса ---
+    _pickFile() {
+        return new Promise((resolve, reject) => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.csv';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) resolve(file);
+                else reject(new Error("Файл не выбран"));
+            };
+            input.click();
+        });
+    }
+
+    _parseCSV(text) {
+        const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+        return lines.map(line => {
+            // Простая разбивка по запятым, без учета кавычек
+            return line.split(',').map(cell => cell.trim());
+        });
+    }
+
+    async importSquadData() {
+        try {
+            // 1. Создание админа (если нет)
+            const adminQuery = query(collection(this.db, 'users'), where('role', '==', 'admin'));
+            const adminSnap = await getDocs(adminQuery);
+            
+            if (adminSnap.empty) {
+                console.log("Создаем дефолтного админа...");
+                await setDoc(doc(this.db, 'users', 'admin_user'), {
+                    username: "admin", password: "admin", balance: 999999,
+                    role: "admin", position: "Commander", unit: "HQ",
+                    certificate: "ROOT", notes: "System Admin",
+                    inventory: [], createdAt: new Date().toISOString()
+                });
+            }
+
+            // 2. Выбор файла (метод теперь внутри класса!)
+            const file = await this._pickFile(); 
+            const text = await file.text();
+            
+            // 3. Парсинг
+            const rows = this._parseCSV(text);
+            if (rows.length < 2) return { count: 0, errors: "Пустой файл" };
+
+            // 4. Подготовка к записи
+            const existingUsersSnap = await getDocs(collection(this.db, 'users'));
+            const userMap = new Map();
+            existingUsersSnap.forEach(doc => userMap.set(doc.data().username, doc.ref));
+
+            let batch = writeBatch(this.db);
+            let operationsCount = 0;
+            let importCount = 0;
+
+            // Начинаем с 1, пропуская заголовок (Позивний, Посада...)
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                if (!row || row.length < 2) continue;
+
+                // === ВАЖНО: МАППИНГ ПОД ВАШ CSV ===
+                // Индексы колонок согласно файлу "штатка - Лист1.csv":
+                // 0: Позивний (Username)
+                // 1: Посада (Position)
+                // 2: Підрозділ (Unit)
+                // 3: Сертифікат (Certificate)
+                // 4: Баланс (Balance)
+                // 6: Примітка (Notes) - в CSV она в колонке G
+                
+                const username = row[0];      // Позивний
+                const position = row[1];      // Посада
+                const unit = row[2];          // Підрозділ
+                const certificate = row[3];   // Сертифікат
+                const balanceStr = row[4];    // Баланс
+                const notes = row[6];         // Примітка (текст в кавычках)
+
+                if (!username) continue;
+
+                const cleanUsername = username.trim();
+                
+                // Формируем данные
+                const userData = {
+                    username: cleanUsername,
+                    password: "12345", // Дефолтный пароль, т.к. в CSV его нет
+                    balance: balanceStr ? Number(balanceStr.replace(/\s/g, '')) : 0, // Удаляем пробелы если есть
+                    role: "user",      // Всем ставим user
+                    position: position ? position.trim() : "",
+                    unit: unit ? unit.trim() : "",
+                    certificate: certificate ? certificate.trim() : "",
+                    notes: notes ? notes.trim() : "",
+                    updatedAt: new Date().toISOString()
+                };
+
+                // Добавляем в батч
+                if (userMap.has(cleanUsername)) {
+                    const userRef = userMap.get(cleanUsername);
+                    batch.update(userRef, userData);
+                } else {
+                    const newUserRef = doc(collection(this.db, 'users'));
+                    userData.createdAt = new Date().toISOString();
+                    userData.inventory = [];
+                    batch.set(newUserRef, userData);
+                }
+
+                importCount++;
+                operationsCount++;
+
+                // Отправляем пакетами по 450
+                if (operationsCount >= 450) {
+                    await batch.commit();
+                    batch = writeBatch(this.db);
+                    operationsCount = 0;
+                }
+            }
+
+            // Финальная отправка остатков
+            if (operationsCount > 0) {
+                await batch.commit();
+            }
+
+            console.log(`Импорт завершен: ${importCount} бойцов.`);
+            return { count: importCount, errors: 0 };
+
+        } catch (e) {
+            console.error("Import error:", e);
+            throw e;
+        }
+    }
+
+    // --- ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ (Теперь корректно внутри класса) ---
+
+    _pickFile() {
+        return new Promise((resolve, reject) => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.csv';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) resolve(file);
+                else reject(new Error("Файл не выбран"));
+            };
+            input.click();
+        });
+    }
+
+    _parseCSV(text) {
+        const rows = [];
+        let currentRow = [];
+        let currentCell = '';
+        let inQuotes = false;
+
+        for (let i = 0; i < text.length; i++) {
+            const char = text[i];
+            const nextChar = text[i + 1];
+
+            if (char === '"') {
+                if (inQuotes && nextChar === '"') {
+                    currentCell += '"';
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (char === ',' && !inQuotes) {
+                currentRow.push(currentCell.trim());
+                currentCell = '';
+            } else if ((char === '\r' || char === '\n') && !inQuotes) {
+                if (currentCell || currentRow.length > 0) {
+                    currentRow.push(currentCell.trim());
+                    rows.push(currentRow);
+                }
+                currentRow = [];
+                currentCell = '';
+                if (char === '\r' && nextChar === '\n') i++;
+            } else {
+                currentCell += char;
+            }
+        }
+        if (currentCell || currentRow.length > 0) {
+            currentRow.push(currentCell.trim());
+            rows.push(currentRow);
+        }
+        return rows;
     }
 }
+

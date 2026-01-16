@@ -253,11 +253,13 @@ export const UI = {
                 <h2 class="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-2">
                     <i data-lucide="shield-alert" class="text-red-600"></i> <span class="hidden md:inline">Командный Центр</span><span class="md:hidden">Админка</span>
                 </h2>
-                <button data-action="import-squad" class="text-xs text-gray-400 hover:text-gray-600">Import</button>
+                <div class="flex gap-2">
+                    <button onclick="if(confirm('Удалить пустые записи?')) location.reload()" class="text-xs text-red-400 hover:text-red-600 hidden">Fix DB</button>
+                    <button data-action="import-squad" class="text-xs text-blue-600 hover:text-blue-800 font-bold border border-blue-200 px-3 py-1 rounded">Import CSV</button>
+                </div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 pb-24 md:pb-0">
-                <!-- 2. Управление Товарами -->
                 <div class="bg-white p-4 md:p-6 rounded-xl shadow-sm flex flex-col h-[500px] md:h-[600px]">
                     <h3 class="font-bold text-lg mb-4 border-b pb-2 flex items-center gap-2"><i data-lucide="shopping-bag"></i> Арсенал</h3>
                     
@@ -290,7 +292,6 @@ export const UI = {
                     </div>
                 </div>
                 
-                <!-- 3. Личный Состав -->
                 <div class="bg-white p-4 md:p-6 rounded-xl shadow-sm flex flex-col h-[500px] md:h-[600px]">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b pb-2 mb-4 gap-2">
                          <h3 class="font-bold text-lg flex items-center gap-2"><i data-lucide="users"></i> Личный состав</h3>
@@ -310,7 +311,9 @@ export const UI = {
                     <button onclick="alert('Добавление бойцов доступно только с ПК версии')" class="md:hidden w-full py-2 bg-gray-100 text-gray-500 rounded text-xs mb-2">Форма добавления скрыта (Mobile)</button>
 
                     <div id="admin-users-list" class="overflow-y-auto flex-1 pr-1 space-y-2 no-scrollbar">
-                        ${users.map(u => `
+                        ${users
+                            .filter(u => u && u.username) /* <--- ГЛАВНОЕ ИСПРАВЛЕНИЕ: Фильтруем пустых */
+                            .map(u => `
                             <div class="user-row p-3 border rounded flex flex-col gap-2 hover:bg-gray-50 transition-colors mb-2" data-username="${u.username.toLowerCase()}">
                                 <div class="flex justify-between items-center">
                                     <div class="flex items-center gap-3">
@@ -322,7 +325,7 @@ export const UI = {
                                             <span class="text-xs text-gray-500 truncate">${u.position || 'Боец'}</span>
                                         </div>
                                     </div>
-                                    <span class="text-sm font-bold text-[#c1a270] whitespace-nowrap">${u.balance.toFixed(0)} A</span>
+                                    <span class="text-sm font-bold text-[#c1a270] whitespace-nowrap">${(u.balance || 0).toFixed(0)} A</span>
                                 </div>
                                 <div class="flex justify-between items-center pt-2 border-t border-dashed">
                                     <span class="text-[10px] text-gray-400 truncate max-w-[120px]">${u.unit || '-'}</span>
