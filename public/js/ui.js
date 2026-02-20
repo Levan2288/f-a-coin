@@ -267,7 +267,7 @@ export const UI = {
                         <input name="name" placeholder="Название" class="p-2 border rounded" required>
                         <input name="type" placeholder="Тип (weapon/uniform)" class="p-2 border rounded" required>
                         <input name="price" type="number" placeholder="Цена" class="p-2 border rounded" required>
-                        <input name="imageUrl" placeholder="URL картинки" class="p-2 border rounded">
+                        <input name="imageFile" type="file" accept="image/*" class="p-2 border rounded text-sm file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-gray-200 file:text-gray-700 file:font-medium file:cursor-pointer">
                         <input name="desc" placeholder="Описание" class="p-2 border rounded md:col-span-2" required>
                         <button type="submit" class="md:col-span-2 bg-green-600 text-white py-2 rounded hover:bg-green-700 font-medium shadow-sm">Добавить</button>
                     </form>
@@ -427,7 +427,7 @@ export const UI = {
                                     <input name="customName" placeholder="Название предмета" class="w-full p-2 border rounded text-sm">
                                     <input name="customType" placeholder="Тип (weapon/uniform/acc)" class="w-full p-2 border rounded text-sm">
                                     <input name="customDesc" placeholder="Описание (награда и т.д.)" class="w-full p-2 border rounded text-sm">
-                                    <input name="customImage" placeholder="URL картинки (необязательно)" class="w-full p-2 border rounded text-sm">
+                                    <input name="customImageFile" type="file" accept="image/*" class="w-full p-2 border rounded text-sm file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-gray-200 file:text-gray-700 file:font-medium file:cursor-pointer">
                                 </div>
                                 <button type="submit" class="w-full bg-green-600 text-white py-2 rounded font-bold text-xs uppercase hover:bg-green-700 mt-2">Выдать бойцу</button>
                             </form>

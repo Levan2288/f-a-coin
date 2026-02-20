@@ -1,13 +1,14 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-import { AuthService, StoreService, AdminService, NotificationService, LogsService } from './services.js';
+import { getStorage } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
+import { AuthService, StoreService, AdminService, NotificationService, LogsService, StorageService } from './services.js';
 import { UI } from './ui.js';
 
 const firebaseConfig = {
-    apiKey: "", 
+    apiKey: "",
     authDomain: "a-coin-fb077.firebaseapp.com",
     projectId: "a-coin-fb077",
-    storageBucket: "a-coin-fb077.appspot.com",
+    storageBucket: "a-coin-fb077.firebasestorage.app",
     messagingSenderId: "123456789",
     appId: "1:123456789:web:abcdef"
 };
@@ -16,11 +17,13 @@ class AppApplication {
     constructor() {
         this.app = initializeApp(firebaseConfig);
         this.db = getFirestore(this.app);
-        
+        this.storage = getStorage(this.app);
+
         this.authService = new AuthService(this.db);
         this.storeService = new StoreService(this.db);
         this.adminService = new AdminService(this.db);
-        this.logsService = new LogsService(this.db); // Инициализация сервиса логов
+        this.logsService = new LogsService(this.db);
+        this.storageService = new StorageService(this.storage);
         
         this.currentRoute = 'shop';
         this.currentAdminTargetUser = null; 
@@ -378,12 +381,19 @@ class AppApplication {
         if (!this.authService.isAdmin()) return;
         const f = form;
         try {
+            let imageUrl = null;
+            const file = f.imageFile?.files[0];
+            if (file) {
+                const path = `items/${Date.now()}_${file.name}`;
+                imageUrl = await this.storageService.uploadImage(file, path);
+            }
+
             await this.adminService.addItem({
                 name: f.name.value,
                 type: f.type.value,
                 price: parseFloat(f.price.value),
                 description: f.desc.value,
-                imageUrl: f.imageUrl.value
+                imageUrl: imageUrl
             });
             NotificationService.show('Товар добавлен', 'success');
             this.navigate('admin');
@@ -482,7 +492,7 @@ class AppApplication {
     async handleGrantItem(form) {
         if (!this.authService.isAdmin()) return;
         const userId = form.dataset.userid;
-        
+
         const shopItemJson = form.shopItemData.value;
         const customName = form.customName.value;
 
@@ -491,12 +501,19 @@ class AppApplication {
         if (shopItemJson) {
             itemData = JSON.parse(shopItemJson);
         } else if (customName) {
+            let imageUrl = null;
+            const file = form.customImageFile?.files[0];
+            if (file) {
+                const path = `items/${Date.now()}_${file.name}`;
+                imageUrl = await this.storageService.uploadImage(file, path);
+            }
+
             itemData = {
                 name: customName,
                 type: form.customType.value || 'acc',
                 description: form.customDesc.value || '',
-                imageUrl: form.customImage.value || null, 
-                price: 0 
+                imageUrl: imageUrl,
+                price: 0
             };
         } else {
             NotificationService.show("Выберите предмет или заполните данные", "error");

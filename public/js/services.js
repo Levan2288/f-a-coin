@@ -1,8 +1,22 @@
-import { 
-    collection, addDoc, getDocs, doc, updateDoc, 
-    deleteDoc, query, where, runTransaction, 
+import {
+    collection, addDoc, getDocs, doc, updateDoc,
+    deleteDoc, query, where, runTransaction,
     onSnapshot, setDoc, arrayUnion, increment, getDoc, writeBatch
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
+
+export class StorageService {
+    constructor(storage) {
+        this.storage = storage;
+    }
+
+    async uploadImage(file, path) {
+        const storageRef = ref(this.storage, path);
+        const snapshot = await uploadBytes(storageRef, file);
+        return getDownloadURL(snapshot.ref);
+    }
+}
 
 // --- НОВЫЙ СЕРВИС ЛОГОВ ---
 export class LogsService {
