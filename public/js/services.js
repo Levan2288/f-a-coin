@@ -608,15 +608,34 @@ export class AdminService {
         });
     }
 
+    _generatePassword(length = 6) {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+        let result = '';
+        for (let i = 0; i < length; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    }
+
     async exportCredentials() {
         const snap = await getDocs(collection(this.db, 'users'));
-        const users = snap.docs
-            .map(d => d.data())
-            .filter(u => u.username && u.role !== 'admin')
-            .sort((a, b) => a.username.localeCompare(b.username));
+        const userDocs = snap.docs
+            .filter(d => {
+                const data = d.data();
+                return data.username && data.role !== 'admin';
+            })
+            .sort((a, b) => a.data().username.localeCompare(b.data().username));
+
+        const results = [];
+
+        for (const userDoc of userDocs) {
+            const newPassword = this._generatePassword();
+            await updateDoc(doc(this.db, 'users', userDoc.id), { password: newPassword });
+            results.push({ username: userDoc.data().username, password: newPassword });
+        }
 
         const header = 'Позивний,Пароль';
-        const rows = users.map(u => `${u.username},${u.password}`);
+        const rows = results.map(u => `${u.username},${u.password}`);
         const csv = [header, ...rows].join('\n');
 
         const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -627,7 +646,7 @@ export class AdminService {
         link.click();
         URL.revokeObjectURL(url);
 
-        return users.length;
+        return results.length;
     }
 
     _parseCSV(text) {

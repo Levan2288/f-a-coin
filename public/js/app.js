@@ -446,9 +446,10 @@ class AppApplication {
     
     async handleExportCredentials() {
         if (!this.authService.isAdmin()) return;
+        if (!confirm('Усі паролі бійців будуть перегенеровані. Продовжити?')) return;
         try {
             const count = await this.adminService.exportCredentials();
-            NotificationService.show(`Експортовано ${count} бійців`, 'success');
+            NotificationService.show(`Згенеровано нові паролі для ${count} бійців`, 'success');
         } catch (e) {
             NotificationService.show('Помилка експорту: ' + e.message, 'error');
         }
