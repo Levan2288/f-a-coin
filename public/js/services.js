@@ -81,6 +81,8 @@ export class AuthService {
 
     async login(username, password) {
         try {
+            await signInAnonymously(this.auth);
+
             const q = query(collection(this.db, 'users'), where('username', '==', username));
             const snapshot = await getDocs(q);
 
@@ -89,8 +91,6 @@ export class AuthService {
             const userData = snapshot.docs[0].data();
 
             if (userData.password !== password) throw new Error('Неверный пароль');
-
-            await signInAnonymously(this.auth);
 
             this.currentUser = { id: snapshot.docs[0].id, ...userData };
             this._saveSession();
