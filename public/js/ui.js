@@ -280,14 +280,7 @@ export const UI = {
                 <h2 class="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-2">
                     <i data-lucide="shield-alert" class="text-red-600"></i> <span class="hidden md:inline">Командный Центр</span><span class="md:hidden">Админка</span>
                 </h2>
-                <div class="flex items-center gap-2">
-                    <button data-action="export-credentials" class="bg-gray-800 hover:bg-[#c1a270] text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm">
-                        <i data-lucide="download" class="w-4 h-4"></i> Експорт доступів
-                    </button>
-                    <button data-action="import-squad" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm">
-                        <i data-lucide="upload" class="w-4 h-4"></i> Імпорт штатки
-                    </button>
-                </div>
+                
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 pb-24 md:pb-0">
