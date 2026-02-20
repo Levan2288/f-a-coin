@@ -2,39 +2,77 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // =============================================
-    // USERS: login requires public read,
-    //        all writes require Firebase Auth token
-    // =============================================
+    // ─────────────────────────────────────────────
+    // USERS (колекція користувачів)
+    // ─────────────────────────────────────────────
+    // Операції:
+    //   READ   — потрібен для логіну (перевірка username/password)
+    //            та для пошуку отримувача при переказі
+    //   CREATE — адмін створює бійців, імпорт штатки
+    //   UPDATE — покупка (balance, inventory),
+    //            переказ (balance відправника і отримувача),
+    //            адмін редагує профіль, списання балансу,
+    //            видача/вилучення предметів, зміна пароля (експорт доступів)
+    //   DELETE — адмін видаляє бійця
+    //
+    // ОБМЕЖЕННЯ: read: true — необхідно для логіну (кастомна авторизація).
+    //            Для повного закриття потрібна міграція на Cloud Functions.
+    // ─────────────────────────────────────────────
     match /users/{userId} {
       allow read: if true;
-      allow create: if request.auth != null;
+
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasAll(['username', 'password', 'balance', 'role', 'inventory'])
+        && request.resource.data.role == 'user';
+
       allow update: if request.auth != null;
+
       allow delete: if request.auth != null;
     }
 
-    // =============================================
-    // ITEMS (shop catalog): public read,
-    //        writes require auth (admin operations)
-    // =============================================
+    // ─────────────────────────────────────────────
+    // ITEMS (каталог товарів / арсенал)
+    // ─────────────────────────────────────────────
+    // Операції:
+    //   READ   — всі бачать каталог (вітрина магазину)
+    //   CREATE — адмін додає товар
+    //   UPDATE — не використовується, але дозволено для майбутнього
+    //   DELETE — адмін видаляє товар
+    // ─────────────────────────────────────────────
     match /items/{itemId} {
       allow read: if true;
-      allow write: if request.auth != null;
+
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasAll(['name', 'price'])
+        && request.resource.data.price is number;
+
+      allow update: if request.auth != null;
+
+      allow delete: if request.auth != null;
     }
 
-    // =============================================
-    // LOGS: only authenticated users can read/create,
-    //       logs are immutable (no update/delete)
-    // =============================================
+    // ─────────────────────────────────────────────
+    // LOGS (журнал операцій)
+    // ─────────────────────────────────────────────
+    // Операції:
+    //   READ   — адмін переглядає журнал
+    //   CREATE — фіксація покупок, переказів, видач
+    //   UPDATE — ЗАБОРОНЕНО (логи незмінні)
+    //   DELETE — ЗАБОРОНЕНО (логи незмінні)
+    // ─────────────────────────────────────────────
     match /logs/{logId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null;
+
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasAll(['type', 'username', 'timestamp'])
+        && request.resource.data.type in ['purchase', 'transfer', 'admin_grant', 'admin_revoke'];
+
       allow update, delete: if false;
     }
 
-    // =============================================
-    // DEFAULT: deny everything else
-    // =============================================
+    // ─────────────────────────────────────────────
+    // DEFAULT: все інше — повна заборона
+    // ─────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
     }

@@ -438,10 +438,10 @@ class AppApplication {
                 username: f.username.value,
                 password: f.password.value,
                 balance: f.balance.value,
-                position: f.position.value,
-                unit: f.unit.value,
-                certificate: f.certificate.value,
-                notes: f.notes.value
+                position: f.position?.value || '',
+                unit: f.unit?.value || '',
+                certificate: f.certificate?.value || '',
+                notes: f.notes?.value || ''
             });
             NotificationService.show('Боец добавлен', 'success');
             this.navigate('admin');

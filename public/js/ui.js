@@ -336,6 +336,10 @@ export const UI = {
                         <input name="username" placeholder="Позывной *" class="p-2 border rounded" required>
                         <input name="password" placeholder="Пароль *" class="p-2 border rounded" required>
                         <input name="balance" type="number" placeholder="Баланс *" class="p-2 border rounded" required>
+                        <input name="position" placeholder="Должность" class="p-2 border rounded">
+                        <input name="unit" placeholder="Подразделение" class="p-2 border rounded">
+                        <input name="certificate" placeholder="Сертификат" class="p-2 border rounded">
+                        <input name="notes" placeholder="Заметки" class="p-2 border rounded md:col-span-2">
                         <button type="submit" class="md:col-span-2 bg-green-600 text-white py-2 rounded hover:bg-green-700 font-medium mt-1">Зачислить бойца</button>
                     </form>
                     
