@@ -6,12 +6,14 @@ import { AuthService, StoreService, AdminService, NotificationService, LogsServi
 import { UI } from './ui.js';
 
 const firebaseConfig = {
-    apiKey: "",
+    apiKey: "AIzaSyBQbeYu7QMrm2C5tQNehzlFaIK1iMm6ZfI",
     authDomain: "a-coin-fb077.firebaseapp.com",
+    databaseURL: "https://a-coin-fb077-default-rtdb.europe-west1.firebasedatabase.app",
     projectId: "a-coin-fb077",
     storageBucket: "a-coin-fb077.firebasestorage.app",
-    messagingSenderId: "123456789",
-    appId: "1:123456789:web:abcdef"
+    messagingSenderId: "190102987448",
+    appId: "1:190102987448:web:f7c363053d732817baca4d",
+    measurementId: "G-F1QSGEK6N5"
 };
 
 class AppApplication {
