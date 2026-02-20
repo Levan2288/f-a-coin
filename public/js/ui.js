@@ -1,7 +1,20 @@
 export const UI = {
+    _getFirstImage(item) {
+        if (item.images && item.images.length > 0) return item.images[0];
+        if (item.imageUrl && item.imageUrl.trim() !== "") return item.imageUrl;
+        return null;
+    },
+
+    _getAllImages(item) {
+        if (item.images && item.images.length > 0) return item.images;
+        if (item.imageUrl && item.imageUrl.trim() !== "") return [item.imageUrl];
+        return [];
+    },
+
     renderItem(item) {
-        const img = item.imageUrl && item.imageUrl.trim() !== ""
-            ? `<img src="${item.imageUrl}" class="w-full h-48 object-contain bg-white rounded-t-xl group-hover:scale-105 transition-transform duration-300" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
+        const firstImg = this._getFirstImage(item);
+        const img = firstImg
+            ? `<img src="${firstImg}" class="w-full h-48 object-contain bg-white rounded-t-xl group-hover:scale-105 transition-transform duration-300" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
                <div class="hidden w-full h-48 bg-gray-50 flex items-center justify-center rounded-t-xl"><i data-lucide="image" class="w-10 h-10 text-gray-300"></i></div>`
             : `<div class="w-full h-48 bg-gray-50 flex items-center justify-center rounded-t-xl"><i data-lucide="box" class="w-10 h-10 text-gray-300"></i></div>`;
 
@@ -31,9 +44,10 @@ export const UI = {
             ? `<button data-action="delete-user-item" data-index="${index}" class="text-red-500 hover:bg-red-50 p-2 rounded-lg transition" title="Изъять предмет"><i data-lucide="trash-2" class="w-5 h-5"></i></button>`
             : `<div class="px-2 py-1 bg-gray-50 rounded text-[10px] font-bold text-gray-400 uppercase tracking-wider">Личное</div>`;
 
+        const firstImg = this._getFirstImage(item);
         let iconOrImg;
-        if (item.imageUrl && item.imageUrl.trim() !== "") {
-            iconOrImg = `<img src="${item.imageUrl}" class="w-full h-full object-cover rounded-lg" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
+        if (firstImg) {
+            iconOrImg = `<img src="${firstImg}" class="w-full h-full object-cover rounded-lg" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
                          <i data-lucide="${this.getIcon(item.type)}" class="hidden w-6 h-6"></i>`;
         } else {
             iconOrImg = `<i data-lucide="${this.getIcon(item.type)}" class="w-6 h-6"></i>`;
@@ -57,27 +71,40 @@ export const UI = {
     },
 
     renderProductDetailsModal(item) {
-        const img = item.imageUrl && item.imageUrl.trim() !== ""
-            ? `<img src="${item.imageUrl}" class="w-full max-h-[40vh] object-contain bg-white rounded-lg mb-4" onerror="this.style.display='none'">`
-            : `<div class="w-full h-40 bg-gray-100 flex items-center justify-center rounded-lg mb-4"><i data-lucide="image-off" class="w-12 h-12 text-gray-300"></i></div>`;
+        const images = this._getAllImages(item);
+        const hasImages = images.length > 0;
+
+        const mainImg = hasImages
+            ? `<img id="modal-main-img" src="${images[0]}" class="w-full max-h-[40vh] object-contain bg-white rounded-lg mb-2 transition-opacity duration-200" onerror="this.style.display='none'">`
+            : `<div class="w-full h-40 bg-gray-100 flex items-center justify-center rounded-lg mb-2"><i data-lucide="image-off" class="w-12 h-12 text-gray-300"></i></div>`;
+
+        const thumbs = images.length > 1
+            ? `<div class="flex gap-2 mb-4">${images.map((url, i) =>
+                `<img src="${url}" data-action="switch-image" data-src="${url}"
+                    class="w-16 h-16 object-cover rounded-lg border-2 cursor-pointer transition-all hover:opacity-80
+                    ${i === 0 ? 'border-[#c1a270]' : 'border-transparent opacity-60'}"
+                    onerror="this.style.display='none'">`
+              ).join('')}</div>`
+            : `<div class="mb-4"></div>`;
 
         return `
         <div class="bg-white md:rounded-2xl rounded-t-2xl shadow-2xl w-full md:max-w-lg max-h-[90vh] flex flex-col animate-in slide-in-from-bottom duration-300 md:animate-in md:fade-in md:zoom-in overflow-hidden relative">
-            
+
             <button data-action="close-modal" class="absolute top-4 right-4 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full p-2 z-10 transition-colors">
                 <i data-lucide="x" class="w-5 h-5 pointer-events-none"></i>
             </button>
 
             <div class="p-6 overflow-y-auto no-scrollbar">
-                ${img}
-                
+                ${mainImg}
+                ${thumbs}
+
                 <div class="flex justify-between items-start mb-2">
                     <h2 class="text-2xl font-bold text-gray-900 leading-tight">${item.name}</h2>
                     <span class="bg-[#c1a270]/10 text-[#c1a270] px-3 py-1 rounded-full font-bold whitespace-nowrap ml-2 text-lg">
                         ${item.price} A
                     </span>
                 </div>
-                
+
                 <div class="flex items-center gap-2 mb-4 text-xs font-medium text-gray-500 uppercase tracking-wide">
                     <span class="bg-gray-100 px-2 py-1 rounded border border-gray-200">${item.type}</span>
                 </div>
@@ -267,7 +294,7 @@ export const UI = {
                         <input name="name" placeholder="Название" class="p-2 border rounded" required>
                         <input name="type" placeholder="Тип (weapon/uniform)" class="p-2 border rounded" required>
                         <input name="price" type="number" placeholder="Цена" class="p-2 border rounded" required>
-                        <input name="imageFile" type="file" accept="image/*" class="p-2 border rounded text-sm file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-gray-200 file:text-gray-700 file:font-medium file:cursor-pointer">
+                        <input name="imageFiles" type="file" accept="image/*" multiple class="p-2 border rounded text-sm file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-gray-200 file:text-gray-700 file:font-medium file:cursor-pointer md:col-span-2">
                         <input name="desc" placeholder="Описание" class="p-2 border rounded md:col-span-2" required>
                         <button type="submit" class="md:col-span-2 bg-green-600 text-white py-2 rounded hover:bg-green-700 font-medium shadow-sm">Добавить</button>
                     </form>
@@ -277,7 +304,7 @@ export const UI = {
                             <div class="flex justify-between items-center p-3 border rounded hover:bg-gray-50 group transition-colors">
                                 <div class="flex items-center gap-3">
                                     <div class="w-10 h-10 bg-gray-100 rounded flex items-center justify-center shrink-0 overflow-hidden">
-                                        ${i.imageUrl ? `<img src="${i.imageUrl}" class="w-full h-full object-cover">` : `<i data-lucide="${this.getIcon(i.type)}" class="w-5 h-5 text-gray-500"></i>`}
+                                        ${this._getFirstImage(i) ? `<img src="${this._getFirstImage(i)}" class="w-full h-full object-cover">` : `<i data-lucide="${this.getIcon(i.type)}" class="w-5 h-5 text-gray-500"></i>`}
                                     </div>
                                     <div class="min-w-0">
                                         <span class="font-bold block text-sm text-gray-800 truncate">${i.name}</span>
@@ -427,7 +454,7 @@ export const UI = {
                                     <input name="customName" placeholder="Название предмета" class="w-full p-2 border rounded text-sm">
                                     <input name="customType" placeholder="Тип (weapon/uniform/acc)" class="w-full p-2 border rounded text-sm">
                                     <input name="customDesc" placeholder="Описание (награда и т.д.)" class="w-full p-2 border rounded text-sm">
-                                    <input name="customImageFile" type="file" accept="image/*" class="w-full p-2 border rounded text-sm file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-gray-200 file:text-gray-700 file:font-medium file:cursor-pointer">
+                                    <input name="customImageFiles" type="file" accept="image/*" multiple class="w-full p-2 border rounded text-sm file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-gray-200 file:text-gray-700 file:font-medium file:cursor-pointer">
                                 </div>
                                 <button type="submit" class="w-full bg-green-600 text-white py-2 rounded font-bold text-xs uppercase hover:bg-green-700 mt-2">Выдать бойцу</button>
                             </form>

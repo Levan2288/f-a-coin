@@ -170,6 +170,7 @@ export class StoreService {
                 name: itemData.name,
                 type: itemData.type,
                 description: itemData.description,
+                images: itemData.images || [],
                 imageUrl: itemData.imageUrl || null,
                 purchaseDate: new Date().toISOString(),
                 uid: crypto.randomUUID()
@@ -292,6 +293,7 @@ export class AdminService {
             name: itemData.name,
             type: itemData.type,
             description: itemData.description || 'Выдано командованием',
+            images: itemData.images || [],
             imageUrl: itemData.imageUrl || null,
             purchaseDate: new Date().toISOString(),
             uid: crypto.randomUUID()

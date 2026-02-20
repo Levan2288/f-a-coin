@@ -75,6 +75,20 @@ class AppApplication {
             if (action === 'filter-logs-user') this.handleFilterLogs(data.username);
             if (action === 'reset-logs') this.handleResetLogs();
 
+            // Галерея
+            if (action === 'switch-image') {
+                const mainImg = document.getElementById('modal-main-img');
+                if (mainImg) {
+                    mainImg.src = data.src;
+                    target.closest('.flex').querySelectorAll('img').forEach(t => {
+                        t.classList.remove('border-[#c1a270]');
+                        t.classList.add('border-transparent', 'opacity-60');
+                    });
+                    target.classList.add('border-[#c1a270]');
+                    target.classList.remove('border-transparent', 'opacity-60');
+                }
+            }
+
             // UI Модалки
             if (action === 'close-modal') this.closeModal();
             if (action === 'toggle-grant-form') {
@@ -381,11 +395,11 @@ class AppApplication {
         if (!this.authService.isAdmin()) return;
         const f = form;
         try {
-            let imageUrl = null;
-            const file = f.imageFile?.files[0];
-            if (file) {
+            const files = Array.from(f.imageFiles?.files || []).slice(0, 3);
+            const images = [];
+            for (const file of files) {
                 const path = `items/${Date.now()}_${file.name}`;
-                imageUrl = await this.storageService.uploadImage(file, path);
+                images.push(await this.storageService.uploadImage(file, path));
             }
 
             await this.adminService.addItem({
@@ -393,7 +407,8 @@ class AppApplication {
                 type: f.type.value,
                 price: parseFloat(f.price.value),
                 description: f.desc.value,
-                imageUrl: imageUrl
+                images: images,
+                imageUrl: images[0] || null
             });
             NotificationService.show('Товар добавлен', 'success');
             this.navigate('admin');
@@ -501,18 +516,19 @@ class AppApplication {
         if (shopItemJson) {
             itemData = JSON.parse(shopItemJson);
         } else if (customName) {
-            let imageUrl = null;
-            const file = form.customImageFile?.files[0];
-            if (file) {
+            const files = Array.from(form.customImageFiles?.files || []).slice(0, 3);
+            const images = [];
+            for (const file of files) {
                 const path = `items/${Date.now()}_${file.name}`;
-                imageUrl = await this.storageService.uploadImage(file, path);
+                images.push(await this.storageService.uploadImage(file, path));
             }
 
             itemData = {
                 name: customName,
                 type: form.customType.value || 'acc',
                 description: form.customDesc.value || '',
-                imageUrl: imageUrl,
+                images: images,
+                imageUrl: images[0] || null,
                 price: 0
             };
         } else {
