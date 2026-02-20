@@ -608,6 +608,28 @@ export class AdminService {
         });
     }
 
+    async exportCredentials() {
+        const snap = await getDocs(collection(this.db, 'users'));
+        const users = snap.docs
+            .map(d => d.data())
+            .filter(u => u.username && u.role !== 'admin')
+            .sort((a, b) => a.username.localeCompare(b.username));
+
+        const header = 'Позивний,Пароль';
+        const rows = users.map(u => `${u.username},${u.password}`);
+        const csv = [header, ...rows].join('\n');
+
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `credentials_${new Date().toISOString().slice(0,10)}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+
+        return users.length;
+    }
+
     _parseCSV(text) {
         const rows = [];
         let currentRow = [];

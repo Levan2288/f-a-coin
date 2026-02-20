@@ -70,6 +70,7 @@ class AppApplication {
             if (action === 'manage-user') this.handleManageUser(data.id); 
             if (action === 'delete-user-item') this.handleDeleteUserItem(data.index);
             if (action === 'import-squad') this.handleImportSquad();
+            if (action === 'export-credentials') this.handleExportCredentials();
             
             // ЛОГИ
             if (action === 'filter-logs-user') this.handleFilterLogs(data.username);
@@ -443,6 +444,16 @@ class AppApplication {
         } catch(err) { NotificationService.show(err.message, 'error'); }
     }
     
+    async handleExportCredentials() {
+        if (!this.authService.isAdmin()) return;
+        try {
+            const count = await this.adminService.exportCredentials();
+            NotificationService.show(`Експортовано ${count} бійців`, 'success');
+        } catch (e) {
+            NotificationService.show('Помилка експорту: ' + e.message, 'error');
+        }
+    }
+
     async handleImportSquad() {
         if (!this.authService.isAdmin()) return;
         if(!confirm("Вы уверены?")) return;
