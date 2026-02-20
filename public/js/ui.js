@@ -280,10 +280,6 @@ export const UI = {
                 <h2 class="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-2">
                     <i data-lucide="shield-alert" class="text-red-600"></i> <span class="hidden md:inline">Командный Центр</span><span class="md:hidden">Админка</span>
                 </h2>
-                <div class="flex gap-2">
-                    <button onclick="if(confirm('Удалить пустые записи?')) location.reload()" class="text-xs text-red-400 hover:text-red-600 hidden">Fix DB</button>
-                    <button data-action="import-squad" class="text-xs text-blue-600 hover:text-blue-800 font-bold border border-blue-200 px-3 py-1 rounded">Import CSV</button>
-                </div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 pb-24 md:pb-0">
