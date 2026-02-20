@@ -3,28 +3,42 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // =============================================
-    // USERS: login requires public read,
-    //        all writes require Firebase Auth token
+    // USERS: все операции требуют авторизацию.
+    // Публичное чтение ЗАКРЫТО (пароли хранятся в документе).
+    // Баланс: обновление разрешено авторизованным (транзакции, покупки, переводы).
+    // Роль: поле role нельзя менять при обновлении (защита от эскалации привилегий).
     // =============================================
     match /users/{userId} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null;
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasAll(['username', 'password', 'balance', 'role', 'inventory'])
+        && request.resource.data.username is string
+        && request.resource.data.balance is number
+        && request.resource.data.role is string;
+
+      // Обновление: разрешено (баланс, инвентарь, профиль).
+      // Поле role нельзя менять — защита от эскалации.
+      allow update: if request.auth != null
+        && (
+          !('role' in request.resource.data)
+          || request.resource.data.role == resource.data.role
+        );
+
       allow delete: if request.auth != null;
     }
 
     // =============================================
-    // ITEMS (shop catalog): public read,
-    //        writes require auth (admin operations)
+    // ITEMS (каталог магазина): чтение и запись только авторизованным.
     // =============================================
     match /items/{itemId} {
-      allow read: if true;
+      allow read: if request.auth != null;
       allow write: if request.auth != null;
     }
 
     // =============================================
-    // LOGS: only authenticated users can read/create,
-    //       logs are immutable (no update/delete)
+    // LOGS: только авторизованные могут читать/создавать.
+    // Логи иммутабельны (update/delete запрещены).
     // =============================================
     match /logs/{logId} {
       allow read: if request.auth != null;
@@ -33,7 +47,7 @@ service cloud.firestore {
     }
 
     // =============================================
-    // DEFAULT: deny everything else
+    // DEFAULT: всё остальное запрещено
     // =============================================
     match /{document=**} {
       allow read, write: if false;
