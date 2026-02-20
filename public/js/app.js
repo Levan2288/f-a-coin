@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 import { getStorage } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 import { AuthService, StoreService, AdminService, NotificationService, LogsService, StorageService } from './services.js';
 import { UI } from './ui.js';
 
@@ -18,8 +19,9 @@ class AppApplication {
         this.app = initializeApp(firebaseConfig);
         this.db = getFirestore(this.app);
         this.storage = getStorage(this.app);
+        this.auth = getAuth(this.app);
 
-        this.authService = new AuthService(this.db);
+        this.authService = new AuthService(this.db, this.auth);
         this.storeService = new StoreService(this.db);
         this.adminService = new AdminService(this.db);
         this.logsService = new LogsService(this.db);

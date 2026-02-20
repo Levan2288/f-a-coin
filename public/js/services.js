@@ -6,6 +6,8 @@ import {
 
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
 
+import { signInAnonymously, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+
 export class StorageService {
     constructor(storage) {
         this.storage = storage;
@@ -70,8 +72,9 @@ export class NotificationService {
 }
 
 export class AuthService {
-    constructor(db) {
+    constructor(db, auth) {
         this.db = db;
+        this.auth = auth;
         this.currentUser = null;
         this.userListenerUnsubscribe = null;
     }
@@ -84,8 +87,10 @@ export class AuthService {
             if (snapshot.empty) throw new Error('Пользователь не найден');
 
             const userData = snapshot.docs[0].data();
-            
+
             if (userData.password !== password) throw new Error('Неверный пароль');
+
+            await signInAnonymously(this.auth);
 
             this.currentUser = { id: snapshot.docs[0].id, ...userData };
             this._saveSession();
@@ -96,10 +101,11 @@ export class AuthService {
         }
     }
 
-    logout() {
+    async logout() {
         this.currentUser = null;
         localStorage.removeItem('voentorg_session');
         if(this.userListenerUnsubscribe) this.userListenerUnsubscribe();
+        await signOut(this.auth);
         window.location.reload();
     }
 
@@ -117,9 +123,14 @@ export class AuthService {
     async restoreSession() {
         const stored = localStorage.getItem('voentorg_session');
         if (!stored) return false;
-        
+
         try {
             const { uid } = JSON.parse(stored);
+
+            if (!this.auth.currentUser) {
+                await signInAnonymously(this.auth);
+            }
+
             return new Promise((resolve) => {
                 this.userListenerUnsubscribe = onSnapshot(doc(this.db, 'users', uid), (docSnap) => {
                     if(docSnap.exists()) {
