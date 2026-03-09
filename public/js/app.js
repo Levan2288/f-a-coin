@@ -1,6 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-import { getStorage } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 import { AuthService, StoreService, AdminService, NotificationService, LogsService, StorageService } from './services.js';
 import { UI } from './ui.js';
@@ -21,14 +20,13 @@ class AppApplication {
     constructor() {
         this.app = initializeApp(firebaseConfig);
         this.db = getFirestore(this.app);
-        this.storage = getStorage(this.app);
         this.auth = getAuth(this.app);
 
         this.authService = new AuthService(this.db, this.auth);
         this.storeService = new StoreService(this.db);
         this.adminService = new AdminService(this.db);
         this.logsService = new LogsService(this.db);
-        this.storageService = new StorageService(this.storage);
+        this.storageService = new StorageService();
         
         this.currentRoute = 'shop';
         this.currentAdminTargetUser = null; 
@@ -404,8 +402,7 @@ class AppApplication {
             const files = Array.from(f.imageFiles?.files || []).slice(0, 3);
             const images = [];
             for (const file of files) {
-                const path = `items/${Date.now()}_${file.name}`;
-                images.push(await this.storageService.uploadImage(file, path));
+                images.push(await this.storageService.uploadImage(file));
             }
 
             await this.adminService.addItem({
@@ -536,8 +533,7 @@ class AppApplication {
             const files = Array.from(form.customImageFiles?.files || []).slice(0, 3);
             const images = [];
             for (const file of files) {
-                const path = `items/${Date.now()}_${file.name}`;
-                images.push(await this.storageService.uploadImage(file, path));
+                images.push(await this.storageService.uploadImage(file));
             }
 
             itemData = {
