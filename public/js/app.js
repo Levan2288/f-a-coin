@@ -76,6 +76,7 @@ class AppApplication {
             if (action === 'export-credentials') this.handleExportCredentials();
             
             // ЛОГИ
+            if (action === 'filter-shop') this.applyShopFilter(data.type);
             if (action === 'filter-logs-user') this.handleFilterLogs(data.username);
             if (action === 'reset-logs') this.handleResetLogs();
 
@@ -223,8 +224,11 @@ class AppApplication {
 
             } else if (route === 'shop') {
                 this.shopItems = await this.storeService.getItems();
+                this.shopFilter = 'all';
+                const types = [...new Set(this.shopItems.map(i => i.type).filter(Boolean))].sort();
                 html = `<h2 class="text-2xl font-bold mb-6 text-gray-800">Военторг</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 pb-20 md:pb-0">
+                        ${UI.renderShopFilters(types, 'all')}
+                        <div id="shop-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 pb-20 md:pb-0">
                             ${this.shopItems.map(i => UI.renderItem(i)).join('')}
                         </div>`;
             
@@ -265,6 +269,19 @@ class AppApplication {
     }
 
     // --- USER ACTIONS ---
+
+    applyShopFilter(type) {
+        this.shopFilter = type;
+        const filtered = type === 'all' ? this.shopItems : this.shopItems.filter(i => i.type === type);
+        const grid = document.getElementById('shop-grid');
+        if (grid) grid.innerHTML = filtered.map(i => UI.renderItem(i)).join('');
+
+        const types = [...new Set(this.shopItems.map(i => i.type).filter(Boolean))].sort();
+        const filtersContainer = grid.previousElementSibling;
+        if (filtersContainer) filtersContainer.outerHTML = UI.renderShopFilters(types, type);
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
 
     handleViewDetails(id) {
         const item = this.shopItems.find(i => i.id === id);

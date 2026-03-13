@@ -469,6 +469,16 @@ export const UI = {
         `;
     },
 
+    renderShopFilters(types, activeType) {
+        const allBtn = `<button data-action="filter-shop" data-type="all"
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${!activeType || activeType === 'all' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}"
+            >Все</button>`;
+        const typeBtns = types.map(t => `<button data-action="filter-shop" data-type="${t}"
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeType === t ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}"
+            >${t}</button>`).join('');
+        return `<div class="flex flex-wrap gap-2 mb-6">${allBtn}${typeBtns}</div>`;
+    },
+
     getIcon(type) {
         const icons = { 'weapon': 'crosshair', 'uniform': 'shirt', 'acc': 'glasses' };
         return icons[type] || 'box';
