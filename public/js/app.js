@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-import { AuthService, StoreService, AdminService, NotificationService, LogsService, StorageService } from './services.js';
+import { AuthService, StoreService, AdminService, NotificationService, LogsService, StorageService } from './services/index.js';
 import { UI } from './ui.js';
 
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
