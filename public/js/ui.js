@@ -469,14 +469,64 @@ export const UI = {
         `;
     },
 
-    renderShopFilters(types, activeType) {
-        const allBtn = `<button data-action="filter-shop" data-type="all"
-            class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${!activeType || activeType === 'all' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}"
-            >Все</button>`;
-        const typeBtns = types.map(t => `<button data-action="filter-shop" data-type="${t}"
-            class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeType === t ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}"
-            >${t}</button>`).join('');
-        return `<div class="flex flex-wrap gap-2 mb-6">${allBtn}${typeBtns}</div>`;
+    renderShopFilters(types, activeType, search, priceMin, priceMax) {
+        const typeItems = types.map(t => `
+            <button data-action="filter-shop-type" data-type="${t}"
+                class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors flex items-center justify-between
+                ${activeType === t ? 'bg-gray-100 font-bold text-gray-900' : 'text-gray-600'}">
+                ${t}
+                ${activeType === t ? '<i data-lucide="check" class="w-4 h-4 text-[#c1a270]"></i>' : ''}
+            </button>`).join('');
+
+        const hasActiveFilters = (activeType && activeType !== 'all') || search || priceMin || priceMax;
+
+        return `
+        <div id="shop-filters" class="mb-6 space-y-3">
+            <div class="flex flex-wrap gap-2 items-center">
+                <!-- Поиск -->
+                <div class="relative flex-1 min-w-[180px]">
+                    <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-gray-400 pointer-events-none"></i>
+                    <input id="shop-search" type="text" value="${search || ''}" placeholder="Поиск по названию..."
+                        class="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#c1a270] outline-none transition">
+                </div>
+
+                <!-- Кнопка Тип -->
+                <div class="relative">
+                    <button id="shop-type-toggle"
+                        class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2
+                        ${activeType && activeType !== 'all' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}">
+                        <i data-lucide="tag" class="w-4 h-4"></i>
+                        ${activeType && activeType !== 'all' ? activeType : 'Тип'}
+                        <i data-lucide="chevron-down" class="w-3 h-3"></i>
+                    </button>
+                    <div id="shop-type-dropdown" class="hidden absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-30 min-w-[180px] max-h-[250px] overflow-y-auto">
+                        <button data-action="filter-shop-type" data-type="all"
+                            class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors font-medium
+                            ${!activeType || activeType === 'all' ? 'bg-gray-100 text-gray-900' : 'text-gray-600'}">
+                            Все типы
+                        </button>
+                        <div class="border-t border-gray-100"></div>
+                        ${typeItems}
+                    </div>
+                </div>
+
+                <!-- Цена от/до -->
+                <div class="flex items-center gap-1">
+                    <input id="shop-price-min" type="number" value="${priceMin || ''}" placeholder="Цена от"
+                        class="w-24 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#c1a270] outline-none transition text-center">
+                    <span class="text-gray-400 text-xs">—</span>
+                    <input id="shop-price-max" type="number" value="${priceMax || ''}" placeholder="до"
+                        class="w-24 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#c1a270] outline-none transition text-center">
+                </div>
+
+                <!-- Сброс -->
+                ${hasActiveFilters ? `
+                <button data-action="reset-shop-filters"
+                    class="px-4 py-2 rounded-lg text-sm font-medium bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition-all whitespace-nowrap flex items-center gap-1">
+                    <i data-lucide="x" class="w-3 h-3"></i> Сброс
+                </button>` : ''}
+            </div>
+        </div>`;
     },
 
     getIcon(type) {

@@ -76,7 +76,8 @@ class AppApplication {
             if (action === 'export-credentials') this.handleExportCredentials();
             
             // ЛОГИ
-            if (action === 'filter-shop') this.applyShopFilter(data.type);
+            if (action === 'filter-shop-type') this.handleShopTypeFilter(data.type);
+            if (action === 'reset-shop-filters') this.resetShopFilters();
             if (action === 'filter-logs-user') this.handleFilterLogs(data.username);
             if (action === 'reset-logs') this.handleResetLogs();
 
@@ -92,6 +93,13 @@ class AppApplication {
                     target.classList.add('border-[#c1a270]');
                     target.classList.remove('border-transparent', 'opacity-60');
                 }
+            }
+
+            // Dropdown типов магазина
+            if (target.id === 'shop-type-toggle' || target.closest('#shop-type-toggle')) {
+                const dd = document.getElementById('shop-type-dropdown');
+                if (dd) dd.classList.toggle('hidden');
+                return;
             }
 
             // UI Модалки
@@ -128,6 +136,26 @@ class AppApplication {
             }
             if (e.target.id === 'logs-search') {
                 this.handleLogsSearch(e.target.value);
+            }
+            if (e.target.id === 'shop-search') {
+                this.shopFilterSearch = e.target.value;
+                this.applyShopFilters();
+            }
+            if (e.target.id === 'shop-price-min') {
+                this.shopFilterPriceMin = e.target.value;
+                this.applyShopFilters();
+            }
+            if (e.target.id === 'shop-price-max') {
+                this.shopFilterPriceMax = e.target.value;
+                this.applyShopFilters();
+            }
+        });
+
+        // Закрытие dropdown типов при клике вне
+        document.addEventListener('click', (e) => {
+            const dd = document.getElementById('shop-type-dropdown');
+            if (dd && !dd.classList.contains('hidden') && !e.target.closest('#shop-type-toggle') && !e.target.closest('#shop-type-dropdown')) {
+                dd.classList.add('hidden');
             }
         });
     }
@@ -224,10 +252,13 @@ class AppApplication {
 
             } else if (route === 'shop') {
                 this.shopItems = await this.storeService.getItems();
-                this.shopFilter = 'all';
+                this.shopFilterType = 'all';
+                this.shopFilterSearch = '';
+                this.shopFilterPriceMin = '';
+                this.shopFilterPriceMax = '';
                 const types = [...new Set(this.shopItems.map(i => i.type).filter(Boolean))].sort();
                 html = `<h2 class="text-2xl font-bold mb-6 text-gray-800">Военторг</h2>
-                        ${UI.renderShopFilters(types, 'all')}
+                        ${UI.renderShopFilters(types, 'all', '', '', '')}
                         <div id="shop-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 pb-20 md:pb-0">
                             ${this.shopItems.map(i => UI.renderItem(i)).join('')}
                         </div>`;
@@ -270,15 +301,55 @@ class AppApplication {
 
     // --- USER ACTIONS ---
 
-    applyShopFilter(type) {
-        this.shopFilter = type;
-        const filtered = type === 'all' ? this.shopItems : this.shopItems.filter(i => i.type === type);
-        const grid = document.getElementById('shop-grid');
-        if (grid) grid.innerHTML = filtered.map(i => UI.renderItem(i)).join('');
+    handleShopTypeFilter(type) {
+        this.shopFilterType = type;
+        // Закрыть dropdown
+        const dd = document.getElementById('shop-type-dropdown');
+        if (dd) dd.classList.add('hidden');
+        this.applyShopFilters(true);
+    }
 
-        const types = [...new Set(this.shopItems.map(i => i.type).filter(Boolean))].sort();
-        const filtersContainer = grid.previousElementSibling;
-        if (filtersContainer) filtersContainer.outerHTML = UI.renderShopFilters(types, type);
+    resetShopFilters() {
+        this.shopFilterType = 'all';
+        this.shopFilterSearch = '';
+        this.shopFilterPriceMin = '';
+        this.shopFilterPriceMax = '';
+        this.applyShopFilters(true);
+    }
+
+    applyShopFilters(rebuildToolbar = false) {
+        let filtered = this.shopItems;
+
+        if (this.shopFilterType && this.shopFilterType !== 'all') {
+            filtered = filtered.filter(i => i.type === this.shopFilterType);
+        }
+        if (this.shopFilterSearch) {
+            const term = this.shopFilterSearch.toLowerCase();
+            filtered = filtered.filter(i => (i.name || '').toLowerCase().includes(term));
+        }
+        if (this.shopFilterPriceMin !== '' && this.shopFilterPriceMin !== undefined) {
+            const min = parseFloat(this.shopFilterPriceMin);
+            if (!isNaN(min)) filtered = filtered.filter(i => i.price >= min);
+        }
+        if (this.shopFilterPriceMax !== '' && this.shopFilterPriceMax !== undefined) {
+            const max = parseFloat(this.shopFilterPriceMax);
+            if (!isNaN(max)) filtered = filtered.filter(i => i.price <= max);
+        }
+
+        const grid = document.getElementById('shop-grid');
+        if (grid) {
+            grid.innerHTML = filtered.length
+                ? filtered.map(i => UI.renderItem(i)).join('')
+                : '<div class="col-span-full text-center py-10 bg-white rounded-xl shadow-sm"><p class="text-gray-400">Товары не найдены</p></div>';
+        }
+
+        if (rebuildToolbar) {
+            const types = [...new Set(this.shopItems.map(i => i.type).filter(Boolean))].sort();
+            const filtersEl = document.getElementById('shop-filters');
+            if (filtersEl) {
+                filtersEl.outerHTML = UI.renderShopFilters(types, this.shopFilterType, this.shopFilterSearch, this.shopFilterPriceMin, this.shopFilterPriceMax);
+            }
+        }
 
         if (typeof lucide !== 'undefined') lucide.createIcons();
     }
