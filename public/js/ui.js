@@ -130,9 +130,10 @@ export const UI = {
                     <i data-lucide="arrow-right-left" class="text-[#c1a270]"></i> Перевод средств
                 </h2>
                 <div class="space-y-5">
-                    <div>
+                    <div class="relative">
                         <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Кому (Позывной)</label>
-                        <input type="text" id="t-user" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#c1a270] outline-none transition" placeholder="Например: Маг">
+                        <input type="text" id="t-user" autocomplete="off" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#c1a270] outline-none transition" placeholder="Например: Маг">
+                        <div id="t-user-dropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-30 max-h-[200px] overflow-y-auto"></div>
                     </div>
                     <div>
                         <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Сумма (A)</label>

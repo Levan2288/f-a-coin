@@ -49,6 +49,15 @@ export class StoreService {
         });
     }
 
+    async getUsernames(excludeId = null) {
+        const snapshot = await getDocs(collection(this.db, 'users'));
+        return snapshot.docs
+            .filter(d => d.id !== excludeId)
+            .map(d => d.data().username)
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b));
+    }
+
     async transfer(senderId, receiverUsername, amount) {
         const value = parseFloat(amount);
         if (isNaN(value) || value <= 0) throw new Error("Некорректная сумма");

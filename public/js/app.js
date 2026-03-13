@@ -272,6 +272,7 @@ class AppApplication {
             
             } else if (route === 'wallet') {
                 html = UI.renderWallet();
+                this.walletUsernames = await this.storeService.getUsernames(this.authService.currentUser.id);
             
             } else if (route === 'admin') {
                 if (!this.authService.isAdmin()) throw new Error("Access Denied");
@@ -293,6 +294,8 @@ class AppApplication {
 
             container.innerHTML = html;
             lucide.createIcons();
+
+            if (route === 'wallet') this.setupWalletDropdown();
         } catch (e) {
             console.error(e);
             NotificationService.show("Ошибка: " + e.message, "error");
@@ -388,6 +391,40 @@ class AppApplication {
         } catch (e) {
             NotificationService.show(e.message || e, 'error');
         }
+    }
+
+    setupWalletDropdown() {
+        const input = document.getElementById('t-user');
+        const dropdown = document.getElementById('t-user-dropdown');
+        if (!input || !dropdown) return;
+
+        const renderList = (filter = '') => {
+            const term = filter.toLowerCase();
+            const filtered = (this.walletUsernames || []).filter(u => u.toLowerCase().includes(term));
+            if (!filtered.length) {
+                dropdown.classList.add('hidden');
+                return;
+            }
+            dropdown.innerHTML = filtered.map(u =>
+                `<div class="px-3 py-2 cursor-pointer hover:bg-gray-100 text-sm text-gray-700 transition" data-username="${u}">${u}</div>`
+            ).join('');
+            dropdown.classList.remove('hidden');
+        };
+
+        input.addEventListener('focus', () => renderList(input.value));
+        input.addEventListener('input', () => renderList(input.value));
+
+        dropdown.addEventListener('mousedown', (e) => {
+            const item = e.target.closest('[data-username]');
+            if (item) {
+                input.value = item.dataset.username;
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        input.addEventListener('blur', () => {
+            setTimeout(() => dropdown.classList.add('hidden'), 150);
+        });
     }
 
     async handleTransfer() {
