@@ -50,11 +50,18 @@ class AppApplication {
 
     setupGlobalListeners() {
         document.addEventListener('click', (e) => {
+            // Dropdown типов магазина (кнопка без data-action)
+            if (e.target.closest('#shop-type-toggle')) {
+                const dd = document.getElementById('shop-type-dropdown');
+                if (dd) dd.classList.toggle('hidden');
+                return;
+            }
+
             const target = e.target.closest('[data-action]');
             if (!target) return;
 
             const action = target.dataset.action;
-            const data = target.dataset; 
+            const data = target.dataset;
 
             // Навигация
             if (action === 'navigate') this.navigate(data.route);
@@ -93,13 +100,6 @@ class AppApplication {
                     target.classList.add('border-[#c1a270]');
                     target.classList.remove('border-transparent', 'opacity-60');
                 }
-            }
-
-            // Dropdown типов магазина
-            if (target.id === 'shop-type-toggle' || target.closest('#shop-type-toggle')) {
-                const dd = document.getElementById('shop-type-dropdown');
-                if (dd) dd.classList.toggle('hidden');
-                return;
             }
 
             // UI Модалки
