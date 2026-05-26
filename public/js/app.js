@@ -1,5 +1,9 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import {
+    initializeFirestore,
+    persistentLocalCache,
+    persistentMultipleTabManager
+} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 import { AuthService, StoreService, AdminService, NotificationService, LogsService, StorageService } from './services/index.js';
 import { UI } from './ui.js';
@@ -19,7 +23,11 @@ const firebaseConfig = {
 class AppApplication {
     constructor() {
         this.app = initializeApp(firebaseConfig);
-        this.db = getFirestore(this.app);
+        this.db = initializeFirestore(this.app, {
+            localCache: persistentLocalCache({
+                tabManager: persistentMultipleTabManager()
+            })
+        });
         this.auth = getAuth(this.app);
 
         this.authService = new AuthService(this.db, this.auth);
@@ -32,6 +40,7 @@ class AppApplication {
         this.currentAdminTargetUser = null;
         this.shopItems = [];
         this.walletUsernames = null;
+        this.adminUsers = null;
         this.logs = []; // Кэш логов
         this.logsFilterUser = null; // Текущий фильтр по юзеру
         
@@ -289,8 +298,10 @@ class AppApplication {
                 if (!this.shopItems.length) {
                     this.shopItems = await this.storeService.getItems();
                 }
-                const users = await this.adminService.getAllUsers();
-                html = UI.renderAdminDashboard(users, this.shopItems);
+                if (!this.adminUsers) {
+                    this.adminUsers = await this.adminService.getAllUsers();
+                }
+                html = UI.renderAdminDashboard(this.adminUsers, this.shopItems);
             } else if (route === 'logs') {
                 if (!this.authService.isAdmin()) throw new Error("Access Denied");
                 
@@ -529,6 +540,7 @@ class AppApplication {
                 document.getElementById('d-user').value,
                 document.getElementById('d-amount').value
             );
+            this.adminUsers = null;
             NotificationService.show('Средства списаны', 'success');
             this.navigate('admin');
         } catch(e) { NotificationService.show(e.message, 'error'); }
@@ -616,6 +628,7 @@ class AppApplication {
                 notes: f.notes?.value || ''
             });
             this.walletUsernames = null;
+            this.adminUsers = null;
             NotificationService.show('Боец добавлен', 'success');
             this.navigate('admin');
         } catch(err) { NotificationService.show(err.message, 'error'); }
@@ -638,6 +651,7 @@ class AppApplication {
         try {
             const result = await this.adminService.importSquadData();
             this.walletUsernames = null;
+            this.adminUsers = null;
             NotificationService.show(`Импорт: ${result.count}`, "success");
             this.navigate('admin');
         } catch(e) {
@@ -686,6 +700,7 @@ class AppApplication {
         try {
             await this.adminService.updateUser(userId, data);
             if (data.username) this.walletUsernames = null;
+            this.adminUsers = null;
             NotificationService.show("Профиль обновлен", "success");
 
             this.navigate('admin');
@@ -731,7 +746,8 @@ class AppApplication {
             const targetUser = await this.adminService.getUserData(userId);
 
             await this.adminService.grantItemToUser(userId, itemData);
-            
+            this.adminUsers = null;
+
             // ЛОГИРОВАНИЕ ВЫДАЧИ
             await this.logsService.addLog({
                 type: 'admin_grant',
@@ -756,7 +772,8 @@ class AppApplication {
             
             // Удаляем и получаем удаленный предмет обратно
             const { removedItem } = await this.adminService.removeUserItem(this.currentAdminTargetUser, index);
-            
+            this.adminUsers = null;
+
             if(removedItem) {
                 // ЛОГИРОВАНИЕ УДАЛЕНИЯ
                 await this.logsService.addLog({
