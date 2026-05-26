@@ -309,9 +309,14 @@ export const UI = {
                                         <span class="text-xs text-[#c1a270] font-bold">${i.price} A</span>
                                     </div>
                                 </div>
-                                <button data-action="delete-item" data-id="${i.id}" class="text-gray-300 hover:text-red-500 transition-colors p-2">
-                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                </button>
+                                <div class="flex items-center">
+                                    <button data-action="edit-item" data-id="${i.id}" class="text-gray-300 hover:text-[#c1a270] transition-colors p-2">
+                                        <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                    </button>
+                                    <button data-action="delete-item" data-id="${i.id}" class="text-gray-300 hover:text-red-500 transition-colors p-2">
+                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
                             </div>
                         `).join('')}
                     </div>
@@ -361,6 +366,45 @@ export const UI = {
                             </div>
                         `).join('')}
                     </div>
+                </div>
+            </div>
+        `;
+    },
+
+    renderEditItemModal(item) {
+        return `
+            <div class="bg-white md:rounded-xl rounded-t-2xl shadow-2xl w-full md:max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-300 md:animate-in md:fade-in md:zoom-in">
+                <div class="p-4 border-b flex justify-between items-center bg-gray-800 text-white rounded-t-2xl md:rounded-t-xl shrink-0">
+                    <h3 class="font-bold text-lg flex items-center gap-3">
+                        <i data-lucide="edit-3" class="w-5 h-5"></i>
+                        <span>Редактирование товара</span>
+                    </h3>
+                    <button data-action="close-modal" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-full hover:bg-red-500 transition-colors">
+                        <i data-lucide="x" class="w-4 h-4 pointer-events-none"></i>
+                    </button>
+                </div>
+                <div class="flex-1 overflow-y-auto bg-gray-100 p-4">
+                    <form data-action="edit-item" data-id="${item.id}" class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 grid grid-cols-2 gap-3">
+                        <div class="col-span-2">
+                            <label class="text-[10px] uppercase font-bold text-gray-400">Название</label>
+                            <input name="name" value="${item.name || ''}" required class="w-full p-2 border rounded text-sm bg-gray-50 focus:bg-white transition-colors">
+                        </div>
+                        <div class="col-span-2 md:col-span-1">
+                            <label class="text-[10px] uppercase font-bold text-gray-400">Тип</label>
+                            <input name="type" value="${item.type || ''}" required class="w-full p-2 border rounded text-sm bg-gray-50 focus:bg-white transition-colors">
+                        </div>
+                        <div class="col-span-2 md:col-span-1">
+                            <label class="text-[10px] uppercase font-bold text-gray-400">Цена (A)</label>
+                            <input name="price" type="number" value="${item.price ?? ''}" required class="w-full p-2 border rounded text-sm bg-gray-50 focus:bg-white transition-colors">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="text-[10px] uppercase font-bold text-gray-400">Описание</label>
+                            <textarea name="description" class="w-full p-2 border rounded text-sm bg-gray-50 focus:bg-white h-20 resize-none">${item.description || ''}</textarea>
+                        </div>
+                        <button type="submit" class="col-span-2 bg-gray-800 text-white py-2 rounded font-bold text-xs uppercase hover:bg-[#c1a270] transition-colors mt-2">
+                            Сохранить изменения
+                        </button>
+                    </form>
                 </div>
             </div>
         `;

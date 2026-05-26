@@ -77,6 +77,7 @@ class AppApplication {
             // Админ
             if (action === 'deduct') this.handleDeduct();
             if (action === 'delete-item') this.handleDeleteItem(data.id);
+            if (action === 'edit-item') this.handleEditItem(data.id);
             if (action === 'manage-user') this.handleManageUser(data.id); 
             if (action === 'delete-user-item') this.handleDeleteUserItem(data.index);
             if (action === 'import-squad') this.handleImportSquad();
@@ -124,6 +125,7 @@ class AppApplication {
 
             const action = form.dataset.action;
             if (action === 'create-item') await this.handleCreateItem(form);
+            if (action === 'edit-item') await this.handleSaveItem(form);
             if (action === 'create-user') await this.handleCreateUser(form);
             
             if (action === 'save-user-profile') await this.handleSaveUserProfile(form);
@@ -551,6 +553,38 @@ class AppApplication {
             NotificationService.show('Товар удален', 'success');
             this.navigate('admin');
         } catch(err) { NotificationService.show(err.message, 'error'); }
+    }
+
+    async handleEditItem(itemId) {
+        if (!this.authService.isAdmin()) return;
+        const overlay = document.getElementById('modal-overlay');
+        overlay.classList.remove('hidden');
+        overlay.dataset.action = "modal-overlay";
+        overlay.innerHTML = '<div class="loader"></div>';
+        try {
+            const item = await this.adminService.getItem(itemId);
+            if (!item) throw new Error("Товар не найден");
+            overlay.innerHTML = UI.renderEditItemModal(item);
+            lucide.createIcons();
+        } catch (e) {
+            this.closeModal();
+            NotificationService.show(e.message || "Ошибка загрузки", "error");
+        }
+    }
+
+    async handleSaveItem(form) {
+        if (!this.authService.isAdmin()) return;
+        const itemId = form.dataset.id;
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        try {
+            await this.adminService.updateItem(itemId, data);
+            NotificationService.show("Товар обновлен", "success");
+            this.closeModal();
+            this.navigate('admin');
+        } catch (e) {
+            NotificationService.show(e.message, "error");
+        }
     }
 
     async handleCreateUser(form) {

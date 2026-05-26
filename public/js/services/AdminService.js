@@ -48,6 +48,21 @@ export class AdminService {
         await addDoc(collection(this.db, 'items'), itemData);
     }
 
+    async updateItem(itemId, data) {
+        const itemRef = doc(this.db, 'items', itemId);
+        const cleanData = Object.fromEntries(
+            Object.entries(data).filter(([_, v]) => v !== undefined && v !== '')
+        );
+        if (cleanData.price !== undefined) cleanData.price = parseFloat(cleanData.price);
+
+        await updateDoc(itemRef, cleanData);
+    }
+
+    async getItem(itemId) {
+        const snap = await getDoc(doc(this.db, 'items', itemId));
+        return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    }
+
     async deleteItem(itemId) {
         await deleteDoc(doc(this.db, 'items', itemId));
     }
