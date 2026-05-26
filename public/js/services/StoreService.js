@@ -1,5 +1,5 @@
 import {
-    collection, getDocs, doc, query, where,
+    collection, getDocs, doc, getDoc, setDoc, query, where,
     runTransaction, arrayUnion, increment
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
@@ -46,16 +46,26 @@ export class StoreService {
                 balance: currentBalance - realPrice,
                 inventory: arrayUnion(newItem)
             });
+
+            return { newItem, realPrice };
         });
     }
 
-    async getUsernames(excludeId = null) {
-        const snapshot = await getDocs(collection(this.db, 'users'));
-        return snapshot.docs
-            .filter(d => d.id !== excludeId)
-            .map(d => d.data().username)
-            .filter(Boolean)
-            .sort((a, b) => a.localeCompare(b));
+    async getUsernamesFromMeta(excludeUsername = null) {
+        const metaRef = doc(this.db, 'meta', 'usernames');
+        const snap = await getDoc(metaRef);
+        let list;
+        if (!snap.exists()) {
+            const usersSnap = await getDocs(collection(this.db, 'users'));
+            list = usersSnap.docs
+                .map(d => d.data().username)
+                .filter(Boolean)
+                .sort((a, b) => a.localeCompare(b));
+            await setDoc(metaRef, { list });
+        } else {
+            list = snap.data().list || [];
+        }
+        return list.filter(u => u !== excludeUsername);
     }
 
     async transfer(senderId, receiverUsername, amount) {
@@ -77,5 +87,7 @@ export class StoreService {
             transaction.update(senderRef, { balance: increment(-value) });
             transaction.update(receiverRef, { balance: increment(value) });
         });
+
+        return value;
     }
 }

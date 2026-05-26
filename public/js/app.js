@@ -29,8 +29,9 @@ class AppApplication {
         this.storageService = new StorageService();
         
         this.currentRoute = 'shop';
-        this.currentAdminTargetUser = null; 
-        this.shopItems = []; 
+        this.currentAdminTargetUser = null;
+        this.shopItems = [];
+        this.walletUsernames = null;
         this.logs = []; // Кэш логов
         this.logsFilterUser = null; // Текущий фильтр по юзеру
         
@@ -253,7 +254,9 @@ class AppApplication {
                 html = UI.renderUserProfile(this.authService.currentUser);
 
             } else if (route === 'shop') {
-                this.shopItems = await this.storeService.getItems();
+                if (!this.shopItems.length) {
+                    this.shopItems = await this.storeService.getItems();
+                }
                 this.shopFilterType = 'all';
                 this.shopFilterSearch = '';
                 this.shopFilterPriceMin = '';
@@ -274,16 +277,20 @@ class AppApplication {
             
             } else if (route === 'wallet') {
                 html = UI.renderWallet();
-                this.walletUsernames = await this.storeService.getUsernames(this.authService.currentUser.id);
-            
+                if (!this.walletUsernames) {
+                    this.walletUsernames = await this.storeService.getUsernamesFromMeta(
+                        this.authService.currentUser.username
+                    );
+                }
+
             } else if (route === 'admin') {
                 if (!this.authService.isAdmin()) throw new Error("Access Denied");
-                
-                const [users, items] = await Promise.all([
-                    this.adminService.getAllUsers(),
-                    this.storeService.getItems()
-                ]);
-                html = UI.renderAdminDashboard(users, items);
+
+                if (!this.shopItems.length) {
+                    this.shopItems = await this.storeService.getItems();
+                }
+                const users = await this.adminService.getAllUsers();
+                html = UI.renderAdminDashboard(users, this.shopItems);
             } else if (route === 'logs') {
                 if (!this.authService.isAdmin()) throw new Error("Access Denied");
                 
@@ -373,12 +380,15 @@ class AppApplication {
     async handleBuy(id, price) {
         if(!confirm(`Купить предмет за ${price} A?`)) return;
         try {
-            const items = await this.storeService.getItems();
-            const item = items.find(i => i.id === id);
+            const item = this.shopItems.find(i => i.id === id);
+            if (!item) throw new Error("Товар не найден");
             const user = this.authService.currentUser;
 
-            await this.storeService.buyItem(user.id, id); 
-            
+            const { newItem, realPrice } = await this.storeService.buyItem(user.id, id);
+
+            user.balance = (user.balance || 0) - realPrice;
+            user.inventory = [...(user.inventory || []), newItem];
+
             // ЛОГИРОВАНИЕ ПОКУПКИ
             await this.logsService.addLog({
                 type: 'purchase',
@@ -387,7 +397,7 @@ class AppApplication {
                 price: parseFloat(price)
             });
 
-            this.updateSidebar(); 
+            this.updateSidebar();
             this.closeModal();
             NotificationService.show(`Приобретено: ${item.name}`, 'success');
         } catch (e) {
@@ -439,8 +449,10 @@ class AppApplication {
         }
 
         try {
-            await this.storeService.transfer(this.authService.currentUser.id, user, amount);
-            
+            const value = await this.storeService.transfer(this.authService.currentUser.id, user, amount);
+
+            this.authService.currentUser.balance = (this.authService.currentUser.balance || 0) - value;
+
             // ЛОГИРОВАНИЕ ПЕРЕВОДА (Опционально, но полезно)
             await this.logsService.addLog({
                 type: 'transfer',
@@ -449,7 +461,7 @@ class AppApplication {
                 price: parseFloat(amount)
             });
 
-            this.updateSidebar(); 
+            this.updateSidebar();
             NotificationService.show(`Перевод ${amount} A бойцу ${user} выполнен`, 'success');
             document.getElementById('t-user').value = '';
             document.getElementById('t-amount').value = '';
@@ -540,6 +552,7 @@ class AppApplication {
                 images: images,
                 imageUrl: images[0] || null
             });
+            this.shopItems = [];
             NotificationService.show('Товар добавлен', 'success');
             this.navigate('admin');
         } catch(err) { NotificationService.show(err.message, 'error'); }
@@ -550,6 +563,7 @@ class AppApplication {
         if(!confirm('Удалить товар навсегда?')) return;
         try {
             await this.adminService.deleteItem(id);
+            this.shopItems = [];
             NotificationService.show('Товар удален', 'success');
             this.navigate('admin');
         } catch(err) { NotificationService.show(err.message, 'error'); }
@@ -579,6 +593,7 @@ class AppApplication {
         const data = Object.fromEntries(formData.entries());
         try {
             await this.adminService.updateItem(itemId, data);
+            this.shopItems = [];
             NotificationService.show("Товар обновлен", "success");
             this.closeModal();
             this.navigate('admin');
@@ -600,6 +615,7 @@ class AppApplication {
                 certificate: f.certificate?.value || '',
                 notes: f.notes?.value || ''
             });
+            this.walletUsernames = null;
             NotificationService.show('Боец добавлен', 'success');
             this.navigate('admin');
         } catch(err) { NotificationService.show(err.message, 'error'); }
@@ -621,6 +637,7 @@ class AppApplication {
         if(!confirm("Вы уверены?")) return;
         try {
             const result = await this.adminService.importSquadData();
+            this.walletUsernames = null;
             NotificationService.show(`Импорт: ${result.count}`, "success");
             this.navigate('admin');
         } catch(e) {
@@ -639,12 +656,12 @@ class AppApplication {
         overlay.innerHTML = '<div class="loader"></div>';
         
         try {
-            const [userData, shopItems] = await Promise.all([
-                this.adminService.getUserData(userId),
-                this.storeService.getItems()
-            ]);
-            
-            this.renderModalContent(userData, shopItems);
+            if (!this.shopItems.length) {
+                this.shopItems = await this.storeService.getItems();
+            }
+            const userData = await this.adminService.getUserData(userId);
+
+            this.renderModalContent(userData, this.shopItems);
         } catch(e) {
             this.closeModal();
             NotificationService.show("Ошибка загрузки данных", "error");
@@ -668,8 +685,9 @@ class AppApplication {
 
         try {
             await this.adminService.updateUser(userId, data);
+            if (data.username) this.walletUsernames = null;
             NotificationService.show("Профиль обновлен", "success");
-            
+
             this.navigate('admin');
             this.handleManageUser(userId);
         } catch (e) {

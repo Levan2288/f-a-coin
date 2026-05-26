@@ -1,5 +1,5 @@
 import {
-    collection, addDoc, getDocs
+    collection, addDoc, getDocs, query, where, orderBy, limit
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 export class LogsService {
@@ -18,11 +18,14 @@ export class LogsService {
         }
     }
 
-    async getAllLogs() {
-        const snap = await getDocs(collection(this.db, 'logs'));
-        return snap.docs
-            .map(d => ({ id: d.id, ...d.data() }))
-            .filter(log => log.type === 'purchase')
-            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    async getAllLogs(maxRecords = 200) {
+        const q = query(
+            collection(this.db, 'logs'),
+            where('type', '==', 'purchase'),
+            orderBy('timestamp', 'desc'),
+            limit(maxRecords)
+        );
+        const snap = await getDocs(q);
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
     }
 }

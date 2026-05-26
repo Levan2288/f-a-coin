@@ -1,5 +1,5 @@
 import {
-    collection, query, where, getDocs, doc, onSnapshot
+    collection, query, where, getDocs, doc, getDoc
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 import { signInAnonymously, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
@@ -9,7 +9,6 @@ export class AuthService {
         this.db = db;
         this.auth = auth;
         this.currentUser = null;
-        this.userListenerUnsubscribe = null;
     }
 
     async login(username, password) {
@@ -37,7 +36,6 @@ export class AuthService {
     async logout() {
         this.currentUser = null;
         localStorage.removeItem('voentorg_session');
-        if(this.userListenerUnsubscribe) this.userListenerUnsubscribe();
         await signOut(this.auth);
         window.location.reload();
     }
@@ -64,17 +62,13 @@ export class AuthService {
                 await signInAnonymously(this.auth);
             }
 
-            return new Promise((resolve) => {
-                this.userListenerUnsubscribe = onSnapshot(doc(this.db, 'users', uid), (docSnap) => {
-                    if(docSnap.exists()) {
-                        this.currentUser = { id: docSnap.id, ...docSnap.data() };
-                        resolve(true);
-                    } else {
-                        this.logout();
-                        resolve(false);
-                    }
-                }, () => resolve(false));
-            });
+            const snap = await getDoc(doc(this.db, 'users', uid));
+            if (!snap.exists()) {
+                this.logout();
+                return false;
+            }
+            this.currentUser = { id: snap.id, ...snap.data() };
+            return true;
         } catch (e) {
             return false;
         }

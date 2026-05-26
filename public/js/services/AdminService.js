@@ -1,6 +1,6 @@
 import {
     collection, addDoc, getDocs, doc, updateDoc,
-    deleteDoc, query, where, setDoc, arrayUnion,
+    deleteDoc, query, where, setDoc, arrayUnion, arrayRemove,
     increment, getDoc, writeBatch
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
@@ -31,6 +31,12 @@ export class AdminService {
                 notes,
                 inventory: []
         });
+
+        await setDoc(
+            doc(this.db, 'meta', 'usernames'),
+            { list: arrayUnion(username) },
+            { merge: true }
+        );
     }
 
     async updateUser(userId, data) {
@@ -40,7 +46,19 @@ export class AdminService {
         );
         if(cleanData.balance) cleanData.balance = parseFloat(cleanData.balance);
 
+        let oldUsername = null;
+        if (cleanData.username) {
+            const prevSnap = await getDoc(userRef);
+            oldUsername = prevSnap.exists() ? prevSnap.data().username : null;
+        }
+
         await updateDoc(userRef, cleanData);
+
+        if (cleanData.username && oldUsername && oldUsername !== cleanData.username) {
+            const metaRef = doc(this.db, 'meta', 'usernames');
+            await updateDoc(metaRef, { list: arrayRemove(oldUsername) });
+            await updateDoc(metaRef, { list: arrayUnion(cleanData.username) });
+        }
     }
 
     async addItem(itemData) {
@@ -197,6 +215,13 @@ export class AdminService {
             if (operationsCount > 0) {
                 await batch.commit();
             }
+
+            const finalUsersSnap = await getDocs(collection(this.db, 'users'));
+            const usernameList = finalUsersSnap.docs
+                .map(d => d.data().username)
+                .filter(Boolean)
+                .sort((a, b) => a.localeCompare(b));
+            await setDoc(doc(this.db, 'meta', 'usernames'), { list: usernameList });
 
             console.log(`Импорт завершен: ${importCount} бойцов.`);
             return { count: importCount, errors: 0 };
