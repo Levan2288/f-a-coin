@@ -135,7 +135,7 @@ class AppApplication {
 
             const action = form.dataset.action;
             if (action === 'create-item') await this.handleCreateItem(form);
-            if (action === 'edit-item') await this.handleSaveItem(form);
+            if (action === 'update-item') await this.handleSaveItem(form);
             if (action === 'create-user') await this.handleCreateUser(form);
             
             if (action === 'save-user-profile') await this.handleSaveUserProfile(form);

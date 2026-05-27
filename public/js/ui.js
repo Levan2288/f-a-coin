@@ -384,7 +384,7 @@ export const UI = {
                     </button>
                 </div>
                 <div class="flex-1 overflow-y-auto bg-gray-100 p-4">
-                    <form data-action="edit-item" data-id="${item.id}" class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 grid grid-cols-2 gap-3">
+                    <form data-action="update-item" data-id="${item.id}" class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 grid grid-cols-2 gap-3">
                         <div class="col-span-2">
                             <label class="text-[10px] uppercase font-bold text-gray-400">Название</label>
                             <input name="name" value="${item.name || ''}" required class="w-full p-2 border rounded text-sm bg-gray-50 focus:bg-white transition-colors">
