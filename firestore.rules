@@ -47,6 +47,16 @@ service cloud.firestore {
     }
 
     // =============================================
+    // META: денормализованные справочники (meta/usernames и т.п.).
+    // Читают все авторизованные; пишут админ-операции и ленивый
+    // bootstrap из StoreService.getUsernamesFromMeta.
+    // =============================================
+    match /meta/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // =============================================
     // DEFAULT: всё остальное запрещено
     // =============================================
     match /{document=**} {

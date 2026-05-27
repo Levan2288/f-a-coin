@@ -21,6 +21,52 @@
 
 ---
 
+## 2026-05-27 — Фикс прав Firestore (переводы) и source-controlled индекс логов
+
+### Контекст
+
+После оптимизации reads от 2026-05-26 не докатили две зависимости:
+
+1. **Переводы упали** с `Missing or insufficient permissions`. `StoreService.getUsernamesFromMeta()` читает документ `meta/usernames`, но в `firestore.rules` не было блока `match /meta/...` — срабатывал дефолтный deny. Не-админ юзер не мог даже открыть страницу «Переводы».
+2. **Логи упали** с `The query requires an index`. Запрос `where('type','==','purchase') + orderBy('timestamp','desc')` (см. `LogsService.getAllLogs`) требует composite-индекс `(type ASC, timestamp DESC)`. Индекс не был создан и не лежал в репо.
+
+### Что сделано
+
+**1. `firestore.rules` — блок для `/meta/{docId}`**
+
+Добавлено правило (между `logs` и дефолтным deny):
+```
+match /meta/{docId} {
+  allow read: if request.auth != null;
+  allow write: if request.auth != null;
+}
+```
+Write нужен и для админских мутаций (`createUser/updateUser/importSquadData`), и для ленивого bootstrap из `StoreService.getUsernamesFromMeta` при первом обращении любого юзера.
+
+**2. Новый `firestore.indexes.json` в корне репо**
+
+Composite-индекс `(type ASC, timestamp DESC)` на коллекции `logs`. Теперь индекс под версионным контролем и деплоится из репо.
+
+**3. `firebase.json`**
+
+В блок `"firestore"` добавлен `"indexes": "firestore.indexes.json"`.
+
+### Деплой
+
+Пользователь должен выполнить:
+```
+firebase deploy --only firestore:rules,firestore:indexes
+```
+Правила применятся мгновенно → переводы починятся сразу. Индекс может строиться несколько минут (статус в Firebase Console → Firestore → Indexes); логи заработают по достижении `Enabled`.
+
+### Файлы
+
+- `firestore.rules` — добавлен блок `/meta/{docId}`.
+- `firestore.indexes.json` — создан.
+- `firebase.json` — добавлен путь к индексам.
+
+---
+
 ## 2026-05-27 — Фикс: модалка «Редактирование товара» сбрасывала ввод при клике на поля
 
 ### Контекст
@@ -119,7 +165,7 @@ Firebase Firestore начал отдавать `429 Too Many Requests` на `bat
 
 **5. `public/js/services/LogsService.js` — `getAllLogs()`**
 - Раньше тянул всю коллекцию `logs` за всю историю и фильтровал на клиенте. Теперь — серверный `where('type','==','purchase') + orderBy('timestamp','desc') + limit(200)`.
-- ⚠️ **Требует составной индекс Firestore** `(type ASC, timestamp DESC)` на коллекции `logs`. При первом запросе Firebase Console покажет ссылку с автосозданием — нужно нажать «Создать». До этого момента запрос будет падать с ошибкой.
+- ~~⚠️ **Требует составной индекс Firestore** `(type ASC, timestamp DESC)` на коллекции `logs`. При первом запросе Firebase Console покажет ссылку с автосозданием — нужно нажать «Создать». До этого момента запрос будет падать с ошибкой.~~ → закрыто в секции 2026-05-27 (индекс в `firestore.indexes.json`, деплой через `firebase deploy --only firestore:indexes`).
 
 **6. `public/js/services/StoreService.js`**
 - Новый метод `getUsernamesFromMeta(excludeUsername)` — читает один документ `meta/usernames` (поле `list: string[]`). При первом обращении (документ ещё не существует) делает один bootstrap-проход по коллекции `users` и создаёт документ.
@@ -140,7 +186,7 @@ Firebase Firestore начал отдавать `429 Too Many Requests` на `bat
 ### Известные ограничения
 
 - **Кросс-устройственная синхронизация баланса теперь не автоматическая.** Если админ списывает баланс юзеру (`handleDeduct`), активная сессия этого юзера увидит новое значение только после перезагрузки или перехода на другую вкладку и обратно. Это сознательное решение — listener сжигал +1 read на каждое изменение user-документа во всех активных сессиях.
-- **Индекс Firestore для логов** нужно создать вручную через ссылку в консоли (Firebase сам её покажет при первом запросе).
+- ~~**Индекс Firestore для логов** нужно создать вручную через ссылку в консоли (Firebase сам её покажет при первом запросе).~~ → закрыто в секции 2026-05-27 (`firestore.indexes.json`).
 - **Документ `meta/usernames` создаётся лениво** — при первом заходе любого юзера на роут wallet, либо при первом `createUser`/`updateUser` (через `setDoc { merge: true }`). Bootstrap-чтение коллекции `users` происходит ровно один раз за всю историю проекта.
 
 ### Что НЕ сделано (отложено)
